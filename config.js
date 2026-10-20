@@ -3,6 +3,6 @@
 // الرابط بيفضل ثابت لو حدّثت الكود بـ: Deploy > Manage deployments > ✏️ > Version: New version > Deploy
 // (وليس Deploy > New deployment اللي بيطلّع رابط جديد كل مرة).
 window.APP_CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzrFeigztWVv8Hzt1Gt5h9MuWOspGWjYBIPy4HaLHAnRcZuswpc1plDInflbao3ZO0j/exec'
+  API_URL: 'https://script.google.com/macros/s/AKfycbyTF6XMQqRQp9K8ZtYcZ-dz3q9szrTSCB23uAEooq8WaCBHoIyDbYe_Xp70kuPL8bfn/exec'
 };
 
