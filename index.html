@@ -161,9 +161,11 @@ tr.r:hover td{background:var(--tint);cursor:pointer}
 table.tblA,table.tblB{min-width:0}
 table.tblA td,table.tblA th,table.tblB td,table.tblB th{white-space:normal;vertical-align:middle}
 tr.grow td{background:#fffaf0}
+tr.grow.pend td{background:#fff1d6}
 .acts{display:flex;gap:6px;flex-wrap:wrap}
 .ltr{direction:ltr;unicode-bidi:plaintext}
 .chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--mut);margin:2px 0 6px;cursor:pointer}
+.chk.big{font-size:15px;color:var(--txt);padding:9px 12px;border:1.5px solid #e0d4bb;border-radius:12px;background:#fff;margin:6px 0}
 .modal{position:fixed;inset:0;background:rgba(30,18,8,.58);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;backdrop-filter:blur(2px)}
 #cropModal{z-index:75}
 .modal .box{background:#fff;border-radius:18px;max-width:760px;width:100%;padding:18px;margin:auto;box-shadow:0 24px 70px rgba(0,0,0,.4)}
@@ -183,6 +185,14 @@ canvas#cropCanvas{width:100%;max-width:320px;aspect-ratio:1;touch-action:none;bo
 @keyframes sp{to{transform:rotate(360deg)}}
 .lead{color:var(--mut);margin:0 0 12px}
 .empty{text-align:center;color:var(--mut);padding:26px 10px}
+/* ===== أول صفحة: دخول الأعضاء + زرار التسجيل ===== */
+.reg-cta{margin:18px 0 4px;padding:14px;border:1.5px dashed var(--gold);border-radius:16px;background:linear-gradient(180deg,#fffaf0,var(--tint));text-align:center}
+.reg-cta b{display:block;color:var(--brown);font-size:16px}
+.reg-cta span{display:block;color:var(--mut);font-size:13.5px;margin:2px 0 10px}
+.have-acct{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:var(--tint);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:14px;font-size:14px}
+/* ===== بيانات التعليم (لغير الطالب) ===== */
+.edu-box{border:1.5px dashed #d6c7a6;border-radius:14px;padding:12px;margin-top:6px;background:#fdfaf3}
+.edu-box h4{margin:0 0 8px;color:var(--brown);font-size:15px}
 /* ===== تبويبات فرعية: من غير slider، لو مفيش مكان بتنزل سطر تاني ===== */
 .subtabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
 .subtabs button{flex:1 1 auto;border:1.5px solid #e0d4bb;background:#fff;color:var(--brown);border-radius:999px;padding:7px 12px;font:inherit;font-weight:700;cursor:pointer;font-size:14px;white-space:nowrap;transition:all .15s}
@@ -217,9 +227,17 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 .pchip b{display:block;font-size:13.5px}
 .pchip small{display:block;color:var(--mut);font-size:11.5px}
 .pchip.on{border-color:var(--brown);background:var(--tint2);box-shadow:0 0 0 3px rgba(60,36,18,.12)}
+.pchip.lock{border-style:dashed;background:#f7f2e6;opacity:.8}
+.pchip.rej{border-style:dashed;border-color:#e3b2ab;background:#fdf1ef}
 .pc .gx{position:absolute;top:-7px;left:-7px;width:22px;height:22px;border-radius:50%;border:0;background:var(--bad);color:#fff;font-size:14px;line-height:1;cursor:pointer;padding:0}
 .gform{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:8px 0}
-.gform input{max-width:230px}
+.gform input{max-width:210px}
+.gform select{max-width:110px}
+.grow-edit{display:grid;grid-template-columns:1.4fr 1fr auto;gap:6px;align-items:center;margin-bottom:8px}
+.grow-edit.g3{grid-template-columns:1.4fr 1fr 110px auto}
+@media(max-width:640px){.grow-edit{grid-template-columns:1fr auto}.grow-edit.g3{grid-template-columns:1fr 104px auto}.grow-edit>input:first-child{grid-column:1/-1}.grow-edit>[data-rm]{min-width:42px}}
+.gl{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px;background:#fff;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.gl.pend{background:#fff8e6;border-color:#ecd29a}.gl.rej{background:#fdf1ef;border-color:#f1c3bd}
 /* ===== الأتوبيس ===== */
 .busWrap{display:inline-block;max-width:100%;overflow-x:auto;padding:2px}
 .busFront{text-align:center;font-size:12px;color:var(--mut);margin-bottom:4px}
@@ -300,11 +318,12 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
   <div class="orn"><i></i>✝<i></i></div>
 </header>
 
+<!-- أول تاب = دخول الأعضاء (هي الصفحة الأولى اللي بتفتح) -->
 <div class="navwrap">
   <nav id="mainNav">
-    <button class="on" data-tab="register">التسجيل</button>
+    <button class="on" data-tab="member" id="navMember">دخول الأعضاء</button>
+    <button data-tab="register" id="navRegister">تسجيل جديد</button>
     <button data-tab="status">استعلام</button>
-    <button data-tab="member" id="navMember">دخول الأعضاء</button>
     <button data-tab="admin">الأدمن</button>
   </nav>
 </div>
@@ -312,13 +331,51 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 <div id="sysBanner" hidden><div class="notice bad" id="sysMsg"></div></div>
 
 <main>
+<!-- ============ الأعضاء (الصفحة الأولى) ============ -->
+<section class="panel" id="tab-member">
+  <div id="memLogin" class="narrow">
+    <div class="mini-logo logo-box"><img data-logo alt="شعار الكنيسة"><span class="logo-fb">✝</span></div>
+    <h3 style="color:var(--brown);text-align:center;margin-top:0">دخول الأعضاء</h3>
+    <p class="lead" style="text-align:center">اليوزر هو <b>كودك الخاص</b> (7 أرقام)، وكلمة المرور في أول مرة هي <b>رقم الواتساب</b> المسجّل.</p>
+    <form id="memForm" novalidate>
+      <div class="field"><label>الكود</label><input id="memCode" inputmode="numeric" enterkeyhint="next" maxlength="7" dir="ltr" autocomplete="username" placeholder="5XXXYYY"></div>
+      <div class="field"><label>كلمة المرور</label><input id="memPass" type="password" dir="ltr" autocomplete="current-password" enterkeyhint="go"></div>
+      <label class="chk"><input type="checkbox" id="memShow"> إظهار كلمة المرور</label>
+      <div class="formerr" id="memErr" hidden></div>
+      <button class="btn pri wide" id="memBtn" type="submit">دخول</button>
+    </form>
+    <small class="hint" style="margin-top:8px">نسيت كلمة المرور؟ اطلب من الإدارة ترجّعها لرقم الواتساب.</small>
+    <div class="reg-cta">
+      <b>لسه مش عضو؟</b>
+      <span>سجّل بياناتك الأول، وبعد ما الإدارة توافق عليك هيوصلك كودك وتقدر تدخل من هنا.</span>
+      <button class="btn gold wide" id="goRegister" type="button">📝 سجّل كعضو جديد</button>
+    </div>
+  </div>
+  <div id="memPortal" hidden>
+    <div class="who"><div class="wl"><div class="nano-logo logo-box"><img data-logo alt=""><span class="logo-fb">✝</span></div><div>أهلًا <b id="memName"></b> · الكود <b class="ltr" id="memCodeShow" style="display:inline-block"></b></div></div><button class="btn sm bad" id="memLogout">خروج</button></div>
+    <div class="notice warn" id="memPwWarn" style="margin-top:10px" hidden>كلمة مرورك الحالية هي رقم الواتساب. يفضّل تغييرها من <a href="#" id="memGoAcct">حسابي</a>.</div>
+    <!-- الترتيب: الأخبار، الرحلات، المؤتمرات، حسابي. الرحلات والمؤتمرات مخفية لحد ما الخادم يقول إن فيه حاجة منهم -->
+    <div class="subtabs" id="memTabs">
+      <button class="on" data-mt="news">📰 الأخبار</button>
+      <button data-mt="trips" id="mtTrips" hidden>🚌 الرحلات</button>
+      <button data-mt="conf" id="mtConf" hidden>🏨 المؤتمرات</button>
+      <button data-mt="acct">👤 حسابي</button>
+    </div>
+    <div id="memNews"></div>
+    <div id="memTrips" hidden></div>
+    <div id="memConf" hidden></div>
+    <div id="memAcct" hidden></div>
+  </div>
+</section>
+
 <!-- ============ التسجيل ============ -->
-<section class="panel" id="tab-register">
+<section class="panel" id="tab-register" hidden>
+  <div class="have-acct" id="haveAcct"><span>عندك كود وحساب بالفعل؟</span><button class="btn sm pri" id="goLogin" type="button">🔑 ادخل من هنا</button></div>
   <div id="closedBox" class="notice bad" hidden>التسجيل مغلق حاليًا.</div>
   <div id="doneBox" hidden>
     <div class="notice good"><b>تم استلام طلبك بنجاح ✔</b><br>سيتم مراجعة بياناتك، وبعد القبول سيصلك كودك الخاص.</div>
     <p>للاطمئنان على طلبك استخدم تبويب <b>«استعلام»</b> بالرقم القومي.</p>
-    <button class="btn pri" id="newReg">تسجيل شخص آخر</button>
+    <div class="row"><button class="btn pri" id="newReg">تسجيل شخص آخر</button><button class="btn" id="doneLogin" type="button">🔑 العودة لتسجيل الدخول</button></div>
   </div>
   <div id="regWrap">
     <p class="lead">املأ البيانات التالية بدقة. الحقول التي بعلامة <b style="color:var(--bad)">*</b> إجبارية.</p>
@@ -346,38 +403,6 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
     <div id="resubForm"></div>
     <div class="formerr" id="resubErr" hidden></div>
     <div class="row"><button class="btn pri" id="resubBtn">إعادة الإرسال</button><button class="btn" id="resubCancel">رجوع</button></div>
-  </div>
-</section>
-
-<!-- ============ الأعضاء ============ -->
-<section class="panel" id="tab-member" hidden>
-  <div id="memLogin" class="narrow">
-    <div class="mini-logo logo-box"><img data-logo alt="شعار الكنيسة"><span class="logo-fb">✝</span></div>
-    <h3 style="color:var(--brown);text-align:center;margin-top:0">دخول الأعضاء</h3>
-    <p class="lead" style="text-align:center">اليوزر هو <b>كودك الخاص</b> (7 أرقام)، وكلمة المرور في أول مرة هي <b>رقم الواتساب</b> المسجّل.</p>
-    <form id="memForm" novalidate>
-      <div class="field"><label>الكود</label><input id="memCode" inputmode="numeric" enterkeyhint="next" maxlength="7" dir="ltr" autocomplete="username" placeholder="5XXXYYY"></div>
-      <div class="field"><label>كلمة المرور</label><input id="memPass" type="password" dir="ltr" autocomplete="current-password" enterkeyhint="go"></div>
-      <label class="chk"><input type="checkbox" id="memShow"> إظهار كلمة المرور</label>
-      <div class="formerr" id="memErr" hidden></div>
-      <button class="btn pri wide" id="memBtn" type="submit">دخول</button>
-    </form>
-    <small class="hint" style="margin-top:8px">نسيت كلمة المرور؟ اطلب من الإدارة ترجّعها لرقم الواتساب.</small>
-  </div>
-  <div id="memPortal" hidden>
-    <div class="who"><div class="wl"><div class="nano-logo logo-box"><img data-logo alt=""><span class="logo-fb">✝</span></div><div>أهلًا <b id="memName"></b> · الكود <b class="ltr" id="memCodeShow" style="display:inline-block"></b></div></div><button class="btn sm bad" id="memLogout">خروج</button></div>
-    <div class="notice warn" id="memPwWarn" style="margin-top:10px" hidden>كلمة مرورك الحالية هي رقم الواتساب. يفضّل تغييرها من <a href="#" id="memGoAcct">حسابي</a>.</div>
-    <!-- الترتيب: الأخبار، الرحلات، المؤتمرات، حسابي. الرحلات والمؤتمرات مخفية لحد ما الخادم يقول إن فيه حاجة منهم -->
-    <div class="subtabs" id="memTabs">
-      <button class="on" data-mt="news">📰 الأخبار</button>
-      <button data-mt="trips" id="mtTrips" hidden>🚌 الرحلات</button>
-      <button data-mt="conf" id="mtConf" hidden>🏨 المؤتمرات</button>
-      <button data-mt="acct">👤 حسابي</button>
-    </div>
-    <div id="memNews"></div>
-    <div id="memTrips" hidden></div>
-    <div id="memConf" hidden></div>
-    <div id="memAcct" hidden></div>
   </div>
 </section>
 
@@ -493,6 +518,20 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
       <div class="field"><label>الحالة <b>*</b></label><select data-f="otherStatus" data-list="otherStatus"></select></div>
       <div class="field" data-group="otherText" hidden><label>اكتب التفاصيل <b>*</b></label><input data-f="otherText" data-t="text"></div>
     </div>
+    <!-- لغير الطالب: بيانات آخر مرحلة دراسية -->
+    <div data-group="edu" hidden>
+      <div class="edu-box">
+        <h4>🎓 آخر مرحلة دراسية حصلت عليها</h4>
+        <div class="grid2">
+          <div class="field"><label>آخر مؤهل دراسي <b>*</b></label><select data-f="lastEduStage" data-list="lastStages"></select></div>
+          <div class="field"><label>سنة التخرج (أو آخر سنة دراسية) <b>*</b></label><input data-f="lastEduGradYear" data-t="digits" inputmode="numeric" maxlength="4" dir="ltr" placeholder="مثال: 2019" autocomplete="off"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>جهة الدراسة (المدرسة / الجامعة / المعهد) <b>*</b></label><input data-f="lastEduPlace" data-t="text"></div>
+          <div class="field"><label>الكلية / القسم <b data-edufacreq>*</b></label><input data-f="lastEduFaculty" data-t="text"></div>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="sec">
     <h3>العنوان</h3>
@@ -607,7 +646,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 // رابط الـ Web App يُقرأ من ملف config.js (لا تعدّل هنا)
 const API_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || '';
 // لازم يطابق APP_VERSION في Code.gs. لو مختلف يظهر تنبيه "الخادم قديم" فوق الصفحة.
-const EXPECTED_VERSION = '2026-10-23-party-v7';
+const EXPECTED_VERSION = '2026-10-25-guests-v8';
 
 /* =========================================================
    الاسم المعتمد (مكان واحد): أي مكان في الموقع فيه اسم الكنيسة أو الاجتماع بيقرأ من هنا
@@ -653,15 +692,17 @@ const LISTS = {
     'معهد': ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة'],
     'دراسات عليا': ['دبلومة', 'تمهيدي ماجستير', 'ماجستير', 'تمهيدي دكتوراه', 'دكتوراه']
   },
+  lastStages: ['مؤهل متوسط / ثانوية', 'فني أو دبلوم', 'جامعي', 'معهد', 'دراسات عليا'],
   sectors: ['حكومي', 'خاص', 'أعمال حرة'],
   otherStatus: ['خريج بدون عمل', 'لا يعمل', 'أخرى'],
   housing: ['اسكان اجتماعي', 'ابني بيتك', 'كومباوند'],
   marital: [['أعزب', 'أعزب / عزباء'], ['خطوبة', 'خطوبة'], ['متزوج', 'متزوج / متزوجة']],
   districts: ['الحي ال16', 'الحي ال15', 'الحي ال12', 'الحي ال11', 'مجاورة 59', 'مجاورة 60', 'حي الاندلس', 'أخرى']
 };
+const EDU_NO_FACULTY = ['مؤهل متوسط / ثانوية', 'فني أو دبلوم'];     // المؤهلات اللي الكلية / القسم فيها اختياري
 const GOV = ['01','02','03','04','11','12','13','14','15','16','17','18','19','21','22','23','24','25','26','27','28','29','31','32','33','34','35','88'];
-const FORM_KEYS = ['fullName','gender','nid','birthDate','maritalStatus','whatsapp','phone','phone2','father','occupation','studyStage','studyYear','studyPlace','faculty','workSector','jobTitle','workPlace','otherStatus','otherText','housingType','compound','district','districtOther','building','apartment','addressDetails'];
-const EXPORT_COLS = [['code','الكود'],['status','الحالة'],['fullName','الاسم'],['gender','النوع'],['nid','الرقم القومي'],['birthDate','تاريخ الميلاد'],['maritalStatus','الحالة الاجتماعية'],['whatsapp','واتساب'],['phone','الهاتف'],['phone2','هاتف آخر'],['father','أب الاعتراف'],['occupation','المهنة'],['studyStage','المرحلة'],['studyYear','السنة الدراسية'],['studyPlace','جهة الدراسة'],['faculty','الكلية / القسم'],['workSector','قطاع العمل'],['jobTitle','المسمى الوظيفي'],['workPlace','جهة العمل'],['otherStatus','حالة (أخرى)'],['otherText','تفاصيل (أخرى)'],['housingType','نوع السكن'],['compound','الكومباوند'],['district','الحي / المجاورة'],['districtOther','حي آخر'],['building','العمارة'],['apartment','الشقة'],['addressDetails','تفاصيل العنوان'],['rejectReason','سبب الرفض'],['createdAt','تاريخ التسجيل'],['reviewedBy','راجعه'],['reviewedAt','تاريخ المراجعة']];
+const FORM_KEYS = ['fullName','gender','nid','birthDate','maritalStatus','whatsapp','phone','phone2','father','occupation','studyStage','studyYear','studyPlace','faculty','workSector','jobTitle','workPlace','otherStatus','otherText','housingType','compound','district','districtOther','building','apartment','addressDetails','lastEduStage','lastEduGradYear','lastEduPlace','lastEduFaculty'];
+const EXPORT_COLS = [['code','الكود'],['status','الحالة'],['fullName','الاسم'],['gender','النوع'],['nid','الرقم القومي'],['birthDate','تاريخ الميلاد'],['maritalStatus','الحالة الاجتماعية'],['whatsapp','واتساب'],['phone','الهاتف'],['phone2','هاتف آخر'],['father','أب الاعتراف'],['occupation','المهنة'],['studyStage','المرحلة'],['studyYear','السنة الدراسية'],['studyPlace','جهة الدراسة'],['faculty','الكلية / القسم'],['workSector','قطاع العمل'],['jobTitle','المسمى الوظيفي'],['workPlace','جهة العمل'],['otherStatus','حالة (أخرى)'],['otherText','تفاصيل (أخرى)'],['lastEduStage','آخر مؤهل دراسي'],['lastEduGradYear','سنة التخرج'],['lastEduPlace','جهة الدراسة (آخر مؤهل)'],['lastEduFaculty','الكلية / القسم (آخر مؤهل)'],['housingType','نوع السكن'],['compound','الكومباوند'],['district','الحي / المجاورة'],['districtOther','حي آخر'],['building','العمارة'],['apartment','الشقة'],['addressDetails','تفاصيل العنوان'],['rejectReason','سبب الرفض'],['createdAt','تاريخ التسجيل'],['reviewedBy','راجعه'],['reviewedAt','تاريخ المراجعة']];
 const PW_MIN = 8;
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -673,7 +714,7 @@ const toEn = s => String(s ?? '').replace(/[\u0660-\u0669]/g, c => c.charCodeAt(
 /* ---------- قواعد الإدخال لكل نوع حقل (data-t) ---------- */
 const LETTERS = 'a-zA-Z\u0621-\u063A\u0641-\u064A\u0670\u0671\u064B-\u0652';
 const RULES = {
-  digits: { re: /[^0-9]/g, msg: 'أرقام إنجليزية (0-9) فقط' },
+  digits: { re: /[^0-9]/g, conv: true, msg: 'أرقام فقط' },
   num:    { re: /[^0-9]/g, conv: true, msg: 'أرقام فقط' },
   name:   { re: new RegExp('[^' + LETTERS + ' ]', 'g'), msg: 'حروف فقط (بدون أرقام أو رموز)' },
   text:   { re: new RegExp('[^' + LETTERS + '0-9 .,\u060C\\-\'/&()]', 'g'), msg: 'حروف وأرقام إنجليزية فقط' },
@@ -726,14 +767,19 @@ async function api(action, payload, timeoutMs) {
   } finally { clearTimeout(t); }
 }
 
-/* ---------------- التبويبات الرئيسية ---------------- */
-const MAIN_TABS = ['register', 'status', 'member', 'admin'];
+/* ---------------- التابات الرئيسية (الأولى = دخول الأعضاء) ---------------- */
+const MAIN_TABS = ['member', 'register', 'status', 'admin'];
 $$('#mainNav button').forEach(b => b.onclick = () => {
   $$('#mainNav button').forEach(x => x.classList.toggle('on', x === b));
   MAIN_TABS.forEach(k => $('#tab-' + k).hidden = (k !== b.dataset.tab));
   if (typeof portalOnTab === 'function') portalOnTab(b.dataset.tab);
+  window.scrollTo({ top: 0 });
 });
 function gotoTab(name) { const b = $(`#mainNav [data-tab="${name}"]`); if (b) b.click(); }
+// «لسه مش عضو؟ سجّل» ← صفحة التسجيل، و«عندي حساب» ← صفحة الدخول
+$('#goRegister').onclick = () => gotoTab('register');
+$('#goLogin').onclick = () => gotoTab('member');
+$('#doneLogin').onclick = () => gotoTab('member');
 
 /* =========================================================
    QR Code (إصدار 1 - تصحيح M - يكفي حتى 14 حرفًا) - مدمج بدون مكتبات
@@ -1052,10 +1098,12 @@ function refreshForm(host) {
   const occ = val(host, 'occupation');
   grp(host, 'student', occ === 'طالب'); grp(host, 'employee', occ === 'موظف'); grp(host, 'other', occ === 'أخرى');
   grp(host, 'otherText', occ === 'أخرى' && val(host, 'otherStatus') === 'أخرى');
+  grp(host, 'edu', occ === 'موظف' || occ === 'أخرى');                              // غير الطالب: بيانات آخر مرحلة دراسية
   const st = val(host, 'studyStage'), ys = fld(host, 'studyYear');
   if (ys.dataset.stage !== st) { ys.dataset.stage = st; fillOptions(ys, LISTS.stages[st] || []); }
   host.querySelector('[data-facreq]').hidden = (st === 'فني أو دبلوم');
   host.querySelector('[data-wpreq]').hidden = (val(host, 'workSector') === 'أعمال حرة');
+  host.querySelector('[data-edufacreq]').hidden = EDU_NO_FACULTY.includes(val(host, 'lastEduStage'));
   grp(host, 'compound', val(host, 'housingType') === 'كومباوند');
   grp(host, 'districtOther', val(host, 'district') === 'أخرى');
 }
@@ -1067,7 +1115,7 @@ function fillForm(host, d) {
 function readForm(host) {
   const d = {};
   FORM_KEYS.forEach(k => { const f = fld(host, k); d[k] = f ? f.value.trim() : ''; });
-  d.nid = digits(d.nid); d.whatsapp = digits(d.whatsapp); d.phone = digits(d.phone); d.phone2 = digits(d.phone2);
+  d.nid = digits(d.nid); d.whatsapp = digits(d.whatsapp); d.phone = digits(d.phone); d.phone2 = digits(d.phone2); d.lastEduGradYear = digits(d.lastEduGradYear);
   d.building = toEn(d.building); d.apartment = toEn(d.apartment); d.addressDetails = toEn(d.addressDetails);
   return d;
 }
@@ -1080,7 +1128,8 @@ function parseNid(n) {
   return { gender: (+n[12]) % 2 === 1 ? 'ذكر' : 'أنثى', birth: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` };
 }
 
-function validateClient(d, host, needPhotos) {
+// opts.lenientEdu: سجل قديم (غير طالب) من غير بيانات تعليم: الأدمن يقدر يحفظ من غير ما يملاها (لكن لو بدأ يكتب فيها لازم تكتمل)
+function validateClient(d, host, needPhotos, opts) {
   const E = (f, m) => ({ f, m });
   const name = d.fullName.replace(/\s+/g, ' ').trim(), words = name.split(' ').filter(Boolean);
   if (words.length < 4 || words.some(w => w.length < 2)) return E('fullName', 'الاسم يجب أن يكون رباعيًا (4 كلمات على الأقل).');
@@ -1111,6 +1160,16 @@ function validateClient(d, host, needPhotos) {
   } else {
     if (!d.otherStatus) return E('otherStatus', 'اختر الحالة.');
     if (d.otherStatus === 'أخرى' && !d.otherText) return E('otherText', 'اكتب التفاصيل.');
+  }
+  // غير الطالب: آخر مرحلة دراسية (المؤهل + سنة التخرج + جهة الدراسة + الكلية)
+  if (d.occupation !== 'طالب' && !(opts && opts.lenientEdu && !d.lastEduStage && !d.lastEduGradYear && !d.lastEduPlace && !d.lastEduFaculty)) {
+    if (!LISTS.lastStages.includes(d.lastEduStage)) return E('lastEduStage', 'اختر آخر مؤهل دراسي حصلت عليه.');
+    if (!/^[0-9]{4}$/.test(d.lastEduGradYear)) return E('lastEduGradYear', 'اكتب سنة التخرج (4 أرقام، مثال: 2019).');
+    const y = +d.lastEduGradYear, cy = new Date().getFullYear(), by = +d.birthDate.slice(0, 4);
+    if (y < 1950 || y > cy) return E('lastEduGradYear', 'سنة التخرج غير منطقية.');
+    if (y < by + 14) return E('lastEduGradYear', 'سنة التخرج غير منطقية بالنسبة لتاريخ الميلاد.');
+    if (!d.lastEduPlace) return E('lastEduPlace', 'اكتب جهة الدراسة (آخر مؤهل).');
+    if (!d.lastEduFaculty && !EDU_NO_FACULTY.includes(d.lastEduStage)) return E('lastEduFaculty', 'اكتب الكلية / القسم (آخر مؤهل).');
   }
   if (!d.housingType) return E('housingType', 'اختر نوع السكن.');
   if (d.housingType === 'كومباوند' && !d.compound) return E('compound', 'اكتب اسم الكومباوند.');
@@ -1210,10 +1269,10 @@ $('#regBtn').onclick = async () => {
   regBusy = true; const btn = $('#regBtn'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> جاري الإرسال... لا تغلق الصفحة';
   const r = await api('register', { data: d, profile: regHost._photos.profile, idCard: regHost._photos.idCard }, 120000);
   regBusy = false; btn.disabled = !regOpen; btn.textContent = 'إرسال الطلب';
-  if (r.ok) { $('#regWrap').hidden = true; $('#doneBox').hidden = false; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  if (r.ok) { $('#regWrap').hidden = true; $('#haveAcct').hidden = true; $('#doneBox').hidden = false; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   else showErr('#regErr', r.error + ((r.error || '').includes('الاتصال') || (r.error || '').includes('مهلة') ? ' (قد يكون طلبك وصل، تحقق من تبويب الاستعلام قبل إعادة الإرسال).' : ''));
 };
-$('#newReg').onclick = () => { mountForm(regHost, { photos: true }); $('#doneBox').hidden = true; $('#regWrap').hidden = false; };
+$('#newReg').onclick = () => { mountForm(regHost, { photos: true }); $('#doneBox').hidden = true; $('#regWrap').hidden = false; $('#haveAcct').hidden = false; };
 
 /* =========================================================
    الاستعلام (بالرقم القومي فقط) + تعديل المرفوض
@@ -1472,7 +1531,8 @@ function refreshDetail() {
 }
 async function saveDetail() {
   showErr('#dErr', '');
-  const d = readForm(dHost), err = validateClient(d, dHost, false);
+  const r0 = byNid(A.cur), legacy = !!(r0 && r0.occupation !== 'طالب' && !r0.lastEduStage);       // تسجيل قديم من غير بيانات تعليم
+  const d = readForm(dHost), err = validateClient(d, dHost, false, { lenientEdu: legacy });
   if (err) return markError(dHost, err, '#dErr');
   const b = $('#dSave'); b.disabled = true; b.innerHTML = '<span class="spin"></span>';
   const r = await adm('adminUpdate', { nid: A.cur, data: d, profile: A.pend.profile || null, idCard: A.pend.idCard || null }, 120000);
