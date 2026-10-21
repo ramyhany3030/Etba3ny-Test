@@ -1,12 +1,13 @@
 /* =====================================================================
    portal.js — بوابة الأعضاء (أخبار/رحلات/مؤتمرات/حسابي) + إدارة الأخبار والرحلات للأدمن + خريطة الأتوبيس
-   + الضيوف (اسم + تليفون + موافقة الأدمن قبل الحجز) + سجل التدقيق وسلة المحذوفات (سوبر أدمن).
-   بيتحمّل قبل السكريبت الرئيسي في index.html.
+   + الضيوف (اسم + تليفون + موافقة الأدمن قبل الحجز) + بوستر الرحلة + أنماط الأتوبيس المحفوظة
+   + سجل التدقيق وسلة المحذوفات (سوبر أدمن). بيتحمّل قبل السكريبت الرئيسي في index.html.
    ===================================================================== */
+const PORTAL_VER = '2026-10-26-poster-v9';           // لازم يطابق EXPECTED_VERSION في index.html (لو اختلف بيظهر تنبيه "ملف قديم")
 
 const PM = { token: sessionStorage.getItem('m_tok') || '', name: sessionStorage.getItem('m_name') || '', code: sessionStorage.getItem('m_code') || '',
   mustChange: false, tab: 'news', tabs: null, imgs: {}, news: { items: [], total: 0 }, trips: [], io: null, dirty: false };
-const PA = { news: [], trips: [], audit: { items: [], hasMore: false }, trashView: 'deleted' };
+const PA = { news: [], trips: [], tpls: [], audit: { items: [], hasMore: false }, trashView: 'deleted' };
 const P_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 function pDate(iso) {
@@ -221,10 +222,17 @@ function presetCells(kind) {
 }
 
 // محرر الأتوبيس: بيرسم داخل host. init: {cells, nums, locked}
+// فيه شريط «أنماط محفوظة»: تطبّق نمط جاهز، أو تحفظ الشكل الحالي باسم عشان تستخدمه تاني في رحلات/مؤتمرات تانية.
 function BusEditor(host, init) {
   const S = { cells: (init && init.cells && init.cells.length ? init.cells : presetCells('2+2')).map(r => r.split('')), oldNums: init && init.nums || null, locked: !!(init && init.locked), tool: 'S' };
   const rows = () => S.cells.length, cols = () => S.cells[0].length;
   host.innerHTML = `
+    <div class="tplbar">
+      <select data-b="tpl"><option value="">📂 الأنماط المحفوظة...</option></select>
+      <button type="button" class="btn sm" data-b="tplApply">تطبيق النمط</button>
+      <button type="button" class="btn sm gold" data-b="tplSave">💾 حفظ الشكل الحالي كنمط</button>
+      <button type="button" class="btn sm bad" data-b="tplDel" title="حذف النمط المختار">🗑</button>
+    </div>
     <div class="row" style="margin-bottom:6px">
       <select data-b="preset" style="width:auto"><option value="">شكل جاهز...</option><option value="2+2">أتوبيس 2+2</option><option value="2+3">أتوبيس 2+3</option><option value="1+2">ميني باص 1+2</option></select>
       <button type="button" class="btn sm" data-b="apply">تطبيق</button>
@@ -268,6 +276,43 @@ function BusEditor(host, init) {
     S.cells = Array.from({ length: R }, (_, r) => Array.from({ length: C }, (_, c) => (S.cells[r] && S.cells[r][c]) || 'E')); full();
   };
   q('rows').onchange = resize; q('cols').onchange = resize;
+
+  /* ---- الأنماط المحفوظة ---- */
+  let TPLS = [];
+  const tplSel = q('tpl');
+  const fillTpl = pick => {
+    tplSel.innerHTML = '<option value="">📂 الأنماط المحفوظة' + (TPLS.length ? ' (' + TPLS.length + ')' : ' — مفيش لسه') + '...</option>' +
+      TPLS.map(t => `<option value="${esc(t.id)}">${esc(t.name)} — ${t.seats} مقعد</option>`).join('');
+    if (pick) tplSel.value = pick;
+  };
+  const setTpls = (items, pick) => { TPLS = items || []; PA.tpls = TPLS; fillTpl(pick); };
+  const cur = () => TPLS.find(t => t.id === tplSel.value);
+  adm('busTplList').then(r => { if (r.ok && host.isConnected) setTpls(r.items); });
+  q('tplApply').onclick = () => {
+    const t = cur(); if (!t) return toast('اختار نمط الأول من القايمة.', 'err');
+    S.cells = t.cells.map(r => r.split('')); full();
+    toast('تم تطبيق النمط «' + t.name + '»' + (S.locked ? ' — خد بالك: مينفعش تحذف مقاعد محجوزة' : ''), 'ok');
+  };
+  q('tplSave').onclick = async () => {
+    const sc = (strs().join('').match(/S/g) || []).length;
+    if (!sc) return toast('ارسم مقعد واحد على الأقل قبل الحفظ.', 'err');
+    const name = await ask({ title: 'حفظ الشكل كنمط', msg: `الشكل الحالي (${sc} مقعد) هيتحفظ باسم تختاره، وتقدر تطبّقه بعد كده في أي رحلة أو مؤتمر. لو كتبت اسم نمط موجود هتقدر تستبدله.`, input: 'line', okText: 'حفظ' });
+    if (!name) return;
+    const same = TPLS.find(t => t.name.trim().toLowerCase() === name.trim().toLowerCase());
+    let id;
+    if (same) { if (!await ask({ title: 'استبدال النمط', msg: `فيه نمط اسمه «${same.name}» (${same.seats} مقعد). تستبدله بالشكل الحالي؟`, okText: 'استبدال' })) return; id = same.id; }
+    const r = await adm('busTplSave', { id, name: name.trim(), cells: strs() });
+    if (!r.ok) return toast(r.error, 'err');
+    const saved = r.items.find(t => t.name.trim().toLowerCase() === name.trim().toLowerCase());
+    setTpls(r.items, saved && saved.id); toast('تم حفظ النمط «' + name.trim() + '» ✔', 'ok');
+  };
+  q('tplDel').onclick = async () => {
+    const t = cur(); if (!t) return toast('اختار النمط اللي عايز تحذفه الأول.', 'err');
+    if (!await ask({ title: 'حذف نمط', msg: `حذف النمط «${t.name}»؟ هيتنقل لسلة المحذوفات (الرحلات اللي استخدمته مش بتتأثر).`, okText: 'حذف' })) return;
+    const r = await adm('busTplDelete', { id: t.id });
+    if (!r.ok) return toast(r.error, 'err');
+    setTpls(r.items); toast('تم حذف النمط (في سلة المحذوفات)', 'ok'); if (typeof refreshTrashCount === 'function') refreshTrashCount();
+  };
   full();
   return { getLayout: () => ({ cells: strs() }) };
 }
@@ -298,7 +343,7 @@ function mLogout(msg, tellServer) {
   if (msg) showErr('#memErr', msg);
 }
 function portalOnTab(tab) { if (tab === 'member' && PM.token && PM.tab === 'news' && !PM.news.items.length && !$('#memNews').dataset.loaded) loadNews(true); }
-function portalAdminReset() { PA.news = []; PA.trips = []; PA.audit = { items: [], hasMore: false }; const a = $('#admAudit'); if (a) { a.dataset.init = ''; a.innerHTML = ''; } }
+function portalAdminReset() { PA.news = []; PA.trips = []; PA.tpls = []; PA.audit = { items: [], hasMore: false }; const a = $('#admAudit'); if (a) { a.dataset.init = ''; a.innerHTML = ''; } }
 
 function portalInit() {
   $('#memCode').addEventListener('input', e => { e.target.value = toEn(e.target.value).replace(/\D/g, '').slice(0, 7); });
@@ -415,14 +460,25 @@ function tripStateHTML(t) {
 function tripCardHTML(t) {
   const pct = t.seatsTotal ? Math.round(t.seatsTaken * 100 / t.seatsTotal) : 0, left = Math.max(t.seatsTotal - t.seatsTaken, 0);
   return `<div class="trip${t.past ? ' past' : ''}" data-id="${esc(t.id)}">
+    ${t.poster ? `<div class="tposter" data-poster="${esc(t.id)}" data-pk="${esc(t.poster)}">⏳ جاري تحميل البوستر...</div>` : ''}
     <div class="row" style="justify-content:space-between"><h4>🚌 ${esc(t.title)}</h4>${t.status === 'closed' ? '<span class="badge g">الحجز مغلق</span>' : '<span class="badge o">الحجز مفتوح</span>'}</div>
     <div class="tmeta"><span>📅 ${esc(pDate(t.tripDate))}${t.tripTime ? ' · ' + esc(t.tripTime) : ''}</span>${t.place ? `<span>📍 ${esc(t.place)}</span>` : ''}${t.price ? `<span>💰 ${esc(t.price)}</span>` : ''}${t.maxPeople > 1 ? `<span>👥 تقدر تحجز لحد ${t.maxPeople} أشخاص (بموافقة الإدارة على الضيوف)</span>` : ''}</div>
     ${t.description ? `<div style="margin:0 0 6px;white-space:pre-wrap;word-break:break-word">${esc(t.description)}</div>` : ''}
     <div class="tbar"><i style="width:${pct}%"></i></div><small class="hint">المقاعد: ${t.seatsTaken} محجوز من ${t.seatsTotal} (باقي ${left})</small>
     <div class="tstate">${tripStateHTML(t)}</div></div>`;
 }
+// البوستر بيتحمّل لوحده بعد ما الكروت تظهر (من غير ما يعطّل الصفحة)، ومتخزّن في الذاكرة بمفتاح = رقم ملف الصورة (لو الأدمن غيّرها بيتحمّل الجديد)
+async function loadTripPoster(el, fetcher) {
+  if (el.dataset.done) return; el.dataset.done = '1';
+  const key = 'poster:' + el.dataset.pk; let src = PM.imgs[key];
+  if (!src) { const r = await fetcher(el.dataset.poster); if (!r.ok) { el.remove(); return; } src = PM.imgs[key] = r.image; }
+  if (!el.isConnected) return;
+  el.innerHTML = `<img src="${src}" alt="بوستر الرحلة">`; el.onclick = () => { $('#lbImg').src = src; $('#lightbox').hidden = false; };
+}
 function renderTrips() {
-  $('#memTrips').innerHTML = PM.trips.length ? PM.trips.map(tripCardHTML).join('') : '<div class="empty">مفيش رحلات متاحة دلوقتي 🚌</div>';
+  const box = $('#memTrips');
+  box.innerHTML = PM.trips.length ? PM.trips.map(tripCardHTML).join('') : '<div class="empty">مفيش رحلات متاحة دلوقتي 🚌</div>';
+  $$('.tposter', box).forEach(el => loadTripPoster(el, id => mcall('tripPoster', { id }, 60000)));
 }
 async function onTripsClick(e) {
   const btn = e.target.closest('[data-act]'); if (!btn) return;
@@ -437,7 +493,12 @@ async function onTripsClick(e) {
         guests = await askJoinGuests({ title: 'طلب الاشتراك في «' + t.title + '»', what: 'الرحلة', max: t.maxPeople, withGender: false });
         if (!guests) return;
       }
-      const r = await mcall('tripJoin', guests ? { tripId: id, guests } : { tripId: id });
+      let r = await mcall('tripJoin', guests ? { tripId: id, guests } : { tripId: id });
+      if (!r.ok && r.needGuests && !guests) {                                       // القايمة عندنا قديمة (الحد اتغيّر): نسأل العضو ونعيد الطلب بدل ما نفضل نكرر الخطأ
+        guests = await askJoinGuests({ title: 'طلب الاشتراك في «' + (t ? t.title : 'الرحلة') + '»', what: 'الرحلة', max: r.needGuests, withGender: false });
+        if (!guests) { await loadTrips(); return; }
+        r = await mcall('tripJoin', { tripId: id, guests });
+      }
       if (!r.ok) toast(r.error, 'err'); else toast(guests && guests.length ? 'تم إرسال الطلب ✔ والضيوف بانتظار موافقة الإدارة' : 'تم إرسال طلب الاشتراك ✔', 'ok');
     } else if (act === 'cancel') {
       if (!await ask({ title: 'إلغاء الاشتراك', msg: `إلغاء اشتراكك في «${t ? t.title : 'الرحلة'}»؟ مقاعدك ومقاعد ضيوفك (لو فيه) هيتحرروا.`, okText: 'إلغاء الاشتراك' })) return;
@@ -662,7 +723,7 @@ function renderTripsAdmin() {
   $('#admTrips').innerHTML = `<div class="row" style="margin-bottom:10px"><button class="btn ok" data-t="new">➕ رحلة جديدة</button></div>` +
     (PA.trips.length ? PA.trips.map(t => { const s = TRIP_ST[t.status] || ['', 'g'];
       return `<div class="trip" data-id="${esc(t.id)}"><div class="row" style="justify-content:space-between"><h4>🚌 ${esc(t.title)}</h4><span class="badge ${s[1]}">${s[0]}</span></div>
-      <div class="tmeta"><span>📅 ${esc(pDate(t.tripDate))}${t.tripTime ? ' · ' + esc(t.tripTime) : ''}</span>${t.place ? `<span>📍 ${esc(t.place)}</span>` : ''}<span>👥 ${t.maxPeople > 1 ? 'لحد ' + t.maxPeople + ' أشخاص لكل عضو' : 'مقعد واحد لكل عضو'}</span></div>
+      <div class="tmeta"><span>📅 ${esc(pDate(t.tripDate))}${t.tripTime ? ' · ' + esc(t.tripTime) : ''}</span>${t.place ? `<span>📍 ${esc(t.place)}</span>` : ''}<span>👥 ${t.maxPeople > 1 ? 'لحد ' + t.maxPeople + ' أشخاص لكل عضو' : 'مقعد واحد لكل عضو'}</span>${t.poster ? '<span>🖼️ ليها بوستر</span>' : ''}</div>
       <div class="tmeta"><span>🕓 طلبات جديدة: <b>${t.requested}</b></span><span>✔ مقبولين: <b>${t.accepted}</b></span>${t.guestsCount ? `<span>➕ ضيوف: <b>${t.guestsCount}</b></span>` : ''}${t.pendingGuests ? `<span class="badge p">⏳ ضيوف بانتظار موافقتك: ${t.pendingGuests}</span>` : ''}<span>💺 محجوز: <b>${t.seatsTaken}</b> / ${t.seatsTotal}</span></div>
       <div class="acts"><button class="btn sm pri" data-t="open">📋 إدارة الرحلة</button><button class="btn sm" data-t="edit">✎ تعديل</button></div></div>`; }).join('')
       : '<div class="empty">مفيش رحلات. اضغط «رحلة جديدة».</div>');
@@ -683,6 +744,11 @@ async function openTripEditor(id, onSaved) {
     <div class="grid2"><div class="field"><label>التاريخ *</label><input type="date" data-e="tripDate" dir="ltr"></div><div class="field"><label>الوقت</label><input type="time" data-e="tripTime" dir="ltr"></div></div>
     <div class="grid2"><div class="field"><label>مكان التجمع</label><input data-e="place" maxlength="120"></div><div class="field"><label>السعر / ملاحظة</label><input data-e="price" maxlength="60" placeholder="مثال: 150 جنيه"></div></div>
     <div class="field"><label>تفاصيل الرحلة</label><textarea data-e="description" rows="3" maxlength="1500"></textarea></div>
+    <div class="field"><label>🖼️ بوستر الرحلة (اختياري)</label>
+      <div class="pedit"><div class="pv" data-e="pv">مفيش بوستر</div>
+        <div class="pb"><button type="button" class="btn sm" data-e="pPick">📁 اختيار صورة</button><button type="button" class="btn sm bad" data-e="pClear" hidden>🗑 إزالة البوستر</button></div>
+        <input type="file" accept="image/*" hidden data-e="pFile"></div>
+      <small class="hint">بيظهر فوق كارت الرحلة للأعضاء. الصورة بتتصغّر تلقائيًا قبل الرفع، ولو شلته أو بدّلته الصورة القديمة بتفضل محفوظة في Drive.</small></div>
     <div class="field"><label>👥 عدد الأشخاص المسموح للعضو الواحد يحجز لهم</label><select data-e="maxPeople">${maxPeopleOptions()}</select>
       <small class="hint">لو اخترت أكتر من 1: العضو لازم يحدد ضيوفه (اسم + تليفون) وقت طلب الاشتراك، وأنت بتوافق على كل ضيف قبل ما يقدر يحجز له مقعد. الحد ده ما يتخطّاش.</small></div>
     <label class="chk"><input type="checkbox" data-e="useCode"> 🔑 الدخول لاختيار المقعد بكود من 4 خانات (بيتولّد لما تقبل اشتراك الشخص وبتبعته له)</label>
@@ -693,16 +759,39 @@ async function openTripEditor(id, onSaved) {
   e('title').value = t ? t.title : ''; e('status').value = t ? t.status : 'draft'; e('tripDate').value = t ? t.tripDate : ''; e('tripTime').value = t ? t.tripTime : '';
   e('place').value = t ? t.place : ''; e('price').value = t ? t.price : ''; e('description').value = t ? t.description : ''; e('useCode').checked = t ? t.useCode : true;
   e('maxPeople').value = String(t ? t.maxPeople : 1);
+  /* ---- البوستر: جديد (posterData) / إزالة (removePoster) / الحالي (hasPoster) ---- */
+  const P = { data: null, remove: false, has: !!(t && t.poster) };
+  const paintPoster = src => {
+    const pv = e('pv');
+    if (src) { pv.innerHTML = `<img src="${src}" alt="بوستر">`; pv.querySelector('img').onclick = () => { $('#lbImg').src = src; $('#lightbox').hidden = false; }; }
+    else pv.textContent = P.has && !P.remove ? '⏳' : 'مفيش بوستر';
+    e('pClear').hidden = !(P.data || (P.has && !P.remove));
+    e('pPick').textContent = P.data || (P.has && !P.remove) ? '📁 تغيير الصورة' : '📁 اختيار صورة';
+  };
+  paintPoster(null);
+  if (P.has) adm('tripPoster', { id: t.id }, 60000).then(r => { if (!m.el.isConnected || P.data || P.remove) return; if (r.ok) paintPoster(r.image); else e('pv').textContent = 'تعذر تحميل البوستر الحالي'; });
+  e('pPick').onclick = () => e('pFile').click();
+  e('pFile').onchange = async ev => {
+    const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+    try {
+      const bmp = await loadBitmap(f); let url = resizeToJpeg(bmp, 1200, 0.8);
+      if (url.length * 0.75 > 1400000) url = resizeToJpeg(bmp, 900, 0.65);               // لو لسه كبيرة نصغّرها أكتر
+      if (url.length * 0.75 > 1400000) return toast('الصورة كبيرة جدًا حتى بعد التصغير. جرّب صورة تانية.', 'err');
+      P.data = url; P.remove = false; paintPoster(url);
+    } catch (x) { toast('تعذر قراءة الصورة. جرّب صورة تانية.', 'err'); }
+  };
+  e('pClear').onclick = () => { P.data = null; P.remove = P.has; paintPoster(null); e('pv').textContent = 'مفيش بوستر'; e('pClear').hidden = true; e('pPick').textContent = '📁 اختيار صورة'; };
   const bus = BusEditor(e('bus'), t && t.layout ? { cells: t.layout.cells, nums: t.layout.nums, locked: t.locked } : null);
   e('cancel').onclick = m.close;
   e('save').onclick = async () => {
     const err = e('err'); err.hidden = true;
     const body = { id: t ? t.id : undefined, title: e('title').value.trim(), status: e('status').value, tripDate: e('tripDate').value, tripTime: e('tripTime').value,
       place: e('place').value.trim(), price: e('price').value.trim(), description: e('description').value, useCode: e('useCode').checked, maxPeople: +e('maxPeople').value, layout: bus.getLayout() };
+    if (P.data) body.poster = P.data; else if (P.remove) body.removePoster = true;
     if (!body.title) { err.textContent = 'اكتب اسم الرحلة.'; err.hidden = false; return; }
     if (!body.tripDate) { err.textContent = 'اختر تاريخ الرحلة.'; err.hidden = false; return; }
     const b = e('save'); b.disabled = true; b.innerHTML = '<span class="spin"></span>';
-    const r = await adm('tripSave', body, 60000);
+    const r = await adm('tripSave', body, 120000);
     b.disabled = false; b.textContent = '💾 حفظ الرحلة';
     if (!r.ok) { err.textContent = r.error; err.hidden = false; err.scrollIntoView({ block: 'center' }); return; }
     m.close(); toast('تم حفظ الرحلة ✔', 'ok'); if (onSaved) onSaved();
@@ -798,6 +887,7 @@ const AUD_ACT = {
   'admin.password.change': 'تغيير باسورد أدمن (ذاتي)', 'admin.password.reset': 'تغيير باسورد أدمن (بواسطة السوبر)', 'admin.super.set': 'تعيين سوبر أدمن',
   'member.password.change': 'تغيير باسورد عضو', 'member.password.reset': 'إرجاع باسورد عضو للواتساب', 'setting.registration': 'فتح/غلق التسجيل',
   'news.create': 'خبر جديد', 'news.update': 'تعديل خبر', 'news.delete': 'حذف خبر',
+  'bustpl.create': 'حفظ نمط أتوبيس', 'bustpl.update': 'استبدال نمط أتوبيس', 'bustpl.delete': 'حذف نمط أتوبيس',
   'trip.create': 'رحلة جديدة', 'trip.update': 'تعديل رحلة', 'trip.delete': 'حذف رحلة', 'trip.join': 'طلب اشتراك في رحلة', 'trip.cancel': 'إلغاء اشتراك رحلة',
   'trip.verify': 'دخول بكود رحلة', 'trip.seat.select': 'اختيار مقعد رحلة', 'trip.seat.release': 'إلغاء مقعد رحلة', 'trip.seat.assign': 'تعيين مقعد رحلة (أدمن)',
   'trip.guest.add': 'إضافة ضيف لحجز رحلة', 'trip.guest.remove': 'حذف ضيف من حجز رحلة', 'trip.guest.approve': 'موافقة على ضيف رحلة', 'trip.guest.reject': 'رفض ضيف رحلة',
@@ -805,17 +895,18 @@ const AUD_ACT = {
   'conf.create': 'مؤتمر جديد', 'conf.update': 'تعديل مؤتمر', 'conf.delete': 'حذف مؤتمر', 'conf.join': 'طلب اشتراك في مؤتمر', 'conf.cancel': 'إلغاء اشتراك مؤتمر',
   'conf.verify': 'دخول بكود مؤتمر', 'conf.seat.select': 'اختيار مقعد مؤتمر', 'conf.seat.release': 'إلغاء مقعد مؤتمر', 'conf.seat.assign': 'تعيين مقعد مؤتمر (أدمن)',
   'conf.guest.add': 'إضافة ضيف لحجز مؤتمر', 'conf.guest.remove': 'حذف ضيف من حجز مؤتمر', 'conf.guest.approve': 'موافقة على ضيف مؤتمر', 'conf.guest.reject': 'رفض ضيف مؤتمر',
+  'conf.access': 'تحديد الغرف المسموحة لشخص',
   'conf.bed.select': 'اختيار سرير', 'conf.bed.release': 'إلغاء سرير', 'conf.bed.assign': 'تسكين (أدمن)', 'conf.decide.accept': 'قبول اشتراك مؤتمر',
   'conf.decide.reject': 'رفض اشتراك مؤتمر', 'conf.decide.cancel': 'إلغاء اشتراك مؤتمر (أدمن)', 'conf.add': 'إضافة عضو لمؤتمر',
   'trash.restore': 'استرجاع من سلة المحذوفات', 'system.migrate': 'ترحيل (من المحرر)'
 };
-const AUD_ENT = { registration: 'التسجيلات', member: 'الأعضاء (باسورد)', news: 'الأخبار', trip: 'الرحلات', tripBooking: 'حجوزات الرحلات', conference: 'المؤتمرات', confBooking: 'حجوزات المؤتمرات', admin: 'الأدمنز', setting: 'الإعدادات', system: 'النظام', memberAuth: 'باسورد عضو' };
+const AUD_ENT = { registration: 'التسجيلات', member: 'الأعضاء (باسورد)', news: 'الأخبار', trip: 'الرحلات', tripBooking: 'حجوزات الرحلات', conference: 'المؤتمرات', confBooking: 'حجوزات المؤتمرات', busTemplate: 'أنماط الأتوبيس', admin: 'الأدمنز', setting: 'الإعدادات', system: 'النظام', memberAuth: 'باسورد عضو' };
 const AUD_TYPE = { super: ['سوبر أدمن', 's'], admin: ['أدمن', 'p'], member: ['عضو', 'o'], public: ['زائر', 'g'], system: ['النظام', 'b'] };
 const AUD_FIELD_BASE = {
   title: 'العنوان', body: 'النص', pinned: 'مثبّت', published: 'منشور', images: 'الصور', tripDate: 'التاريخ', tripTime: 'الوقت', place: 'المكان', price: 'السعر', description: 'التفاصيل',
   status: 'الحالة', useCode: 'الدخول بكود', useBus: 'أتوبيس', verified: 'دخل بالكود', seat: 'المقعد', bed: 'السرير', destination: 'الوجهة', dateFrom: 'من', dateTo: 'إلى', days: 'الأيام',
   nights: 'الليالي', rooms: 'الغرف', layout: 'الخريطة', open: 'التسجيل مفتوح', details: 'التفاصيل', profilePhoto: 'الصورة الشخصية', idPhoto: 'صورة البطاقة',
-  maxPeople: 'حد الأشخاص لكل عضو', guests: 'الضيوف'
+  maxPeople: 'حد الأشخاص لكل عضو', guests: 'الضيوف', poster: 'البوستر', roomAccess: 'الغرف المسموحة', name: 'الاسم', seats: 'عدد المقاعد'
 };
 let AUD_FIELD_ALL = null;                      // بيتبني وقت الاستخدام (EXPORT_COLS بيتعرّف في السكريبت الرئيسي اللي بيتحمّل بعد الملف ده)
 function audField(k) {
@@ -869,7 +960,7 @@ async function loadAuditAdmin(more) {
 /* =====================================================================
    سلة المحذوفات (سوبر أدمن): استرجاع بقيود (من غير تكرار) مع تنبيهات
    ===================================================================== */
-const TRASH_KIND = { registration: ['👤', 'تسجيل'], news: ['📰', 'خبر'], trip: ['🚌', 'رحلة'], conference: ['🏨', 'مؤتمر'], admin: ['🔑', 'حساب أدمن'], memberAuth: ['🔒', 'باسورد عضو'], tripBooking: ['🎫', 'حجز رحلة'], confBooking: ['🎫', 'حجز مؤتمر'] };
+const TRASH_KIND = { registration: ['👤', 'تسجيل'], news: ['📰', 'خبر'], trip: ['🚌', 'رحلة'], conference: ['🏨', 'مؤتمر'], admin: ['🔑', 'حساب أدمن'], memberAuth: ['🔒', 'باسورد عضو'], tripBooking: ['🎫', 'حجز رحلة'], confBooking: ['🎫', 'حجز مؤتمر'], busTemplate: ['🗺️', 'نمط أتوبيس'] };
 const TRASH_CHILD = { memberAuth: 'باسورد', tripBooking: 'حجز رحلة', confBooking: 'حجز مؤتمر' };
 async function loadTrashAdmin() {
   const box = $('#admTrash'); box.innerHTML = pSpin;
@@ -877,7 +968,7 @@ async function loadTrashAdmin() {
   if (!r.ok) { box.innerHTML = `<div class="formerr">${esc(r.error)}</div>`; return; }
   setTrashCount(r.count);
   const view = PA.trashView;
-  box.innerHTML = `<div class="notice info">أي حاجة بتتمسح بتنتقل هنا ومبتتمسحش نهائيًا. الاسترجاع بيرفض لو هيعمل تكرار (رقم قومي أو كود أو اسم+تاريخ أو يوزر)، وبيعرض تنبيهات لو اضطر يتخطى حاجة.</div>
+  box.innerHTML = `<div class="notice info">أي حاجة بتتمسح بتنتقل هنا ومبتتمسحش نهائيًا. الاسترجاع بيرفض لو هيعمل تكرار (رقم قومي أو كود أو اسم+تاريخ أو يوزر أو اسم نمط)، وبيعرض تنبيهات لو اضطر يتخطى حاجة.</div>
     <div class="subtabs"><button data-tv="deleted" class="${view === 'deleted' ? 'on' : ''}">🗑 المحذوفات (${r.count})</button><button data-tv="restored" class="${view === 'restored' ? 'on' : ''}">♻️ اللي اترجّعت</button></div>
     <div id="trList">${r.items.length ? r.items.map(x => { const k = TRASH_KIND[x.kind] || ['📦', x.kind];
       const kids = Object.keys(x.children).map(c => `${x.children[c]} ${TRASH_CHILD[c] || c}`).join(' + ');
