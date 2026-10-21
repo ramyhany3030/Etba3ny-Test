@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="config.js"></script>
 <script src="portal.js"></script>
+<script src="conferences.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <style>
 :root{--navy:#1f3a5f;--navy2:#2c5282;--gold:#c8a24a;--bg:#f2f5fa;--card:#fff;--txt:#1d2733;--mut:#6b7785;--line:#dfe5ee;--ok:#1f8a4c;--warn:#c27c0e;--bad:#c0392b}
@@ -1212,7 +1213,7 @@ async function saveDetail() {
   if (!r.ok) return showErr('#dErr', r.error);
   const old = A.cur, changed = Object.keys(A.pend).length;
   A.cur = r.row.nid; A.pend = {};
-  Object.keys(A.img).forEach(k => { if (k.indexOf(old) === 0) delete A.img[k]; });       // نمسح كاش الصور القديمة
+  Object.keys(A.img).forEach(k => { if (k.indexOf(old) === 0) delete A.img[k]; });
   $$('#dImgP,#dImgI').forEach(x => x.classList.remove('pend'));
   upsertRow(r.row, old); refreshDetail(); toast('تم حفظ التعديلات', 'ok');
   if (changed) { loadImg(A.cur, 'profile', '#dImgP'); loadImg(A.cur, 'idCard', '#dImgI'); }
@@ -1230,7 +1231,7 @@ async function loadImg(nid, which, sel) {
   box.innerHTML = `<img src="${src}" alt="">`;
   box.querySelector('img').onclick = () => { $('#lbImg').src = src; $('#lightbox').hidden = false; };
 }
-// استبدال الصورة الشخصية (بقص مربع) أو صورة البطاقة قبل القبول/بعده — بتتحفظ مع «حفظ التعديلات»
+// استبدال الصورة الشخصية (بقص مربع) أو صورة البطاقة — بتتحفظ مع «حفظ التعديلات»
 function bindAdminPhoto(btnId, fileId, kind, boxSel) {
   $(btnId).onclick = () => $(fileId).click();
   $(fileId).onchange = async e => {
