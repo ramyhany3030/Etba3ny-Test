@@ -37,7 +37,8 @@ body.lock{overflow:hidden}
 @media (prefers-reduced-motion:reduce){.sp-logo,.sp-bar i{animation:none}#splash{transition:none}}
 </style>
 
-<script src="config.js"></script>
+<!-- ?v=رقم النسخة: بيجبر المتصفح يحمّل الملفات الجديدة بعد كل تحديث (بدل النسخة القديمة المخزّنة). لازم يطابق EXPECTED_VERSION تحت -->
+<script src="config.js?v=2026-10-26-poster-v9"></script>
 <!-- محمّل الشعار: بيجرّب المصادر بالترتيب لحد ما واحد يشتغل: LOGO_URL (من config.js) ← logo.png (جنب index.html) ← Drive -->
 <script>
 (function () {
@@ -64,8 +65,8 @@ body.lock{overflow:hidden}
   document.addEventListener('DOMContentLoaded', L.apply);
 })();
 </script>
-<script src="portal.js"></script>
-<script src="conferences.js"></script>
+<script src="portal.js?v=2026-10-26-poster-v9"></script>
+<script src="conferences.js?v=2026-10-26-poster-v9"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <style>
 /* ===== لوحة الألوان (مأخوذة من الشعار): بني #3c2412 · كريمي #f4ecdc · ذهبي #c38622 ===== */
@@ -212,7 +213,7 @@ canvas#cropCanvas{width:100%;max-width:320px;aspect-ratio:1;touch-action:none;bo
 .pimg img{width:100%;display:block;object-fit:cover;max-height:420px}
 .pimgs.one .pimg img{max-height:520px;object-fit:contain;background:#faf6ec}
 /* ===== رحلات ومؤتمرات ===== */
-.trip{border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px rgba(60,36,18,.05)}
+.trip{border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px rgba(60,36,18,.05);overflow:hidden}
 .trip.past{opacity:.75}
 .trip h4{margin:0 0 4px;color:var(--brown);font-size:17px}
 .trip .tmeta{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13.5px;color:#5a4a38;margin-bottom:6px}
@@ -220,6 +221,16 @@ canvas#cropCanvas{width:100%;max-width:320px;aspect-ratio:1;touch-action:none;bo
 .tbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-d),var(--gold))}
 .tstate{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-weight:700;direction:ltr;max-width:160px}
+/* ===== بوستر الرحلة (اختياري) ===== */
+.tposter{margin:-14px -14px 12px;background:var(--tint2);cursor:zoom-in;min-height:90px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px}
+.tposter img{display:block;width:100%;max-height:360px;object-fit:cover}
+.pedit{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border:1.5px dashed #d6c7a6;border-radius:14px;padding:10px;background:#fdfaf3}
+.pedit .pv{width:170px;height:110px;border-radius:12px;background:var(--tint2);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12.5px;text-align:center;flex:none}
+.pedit .pv img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.pedit .pb{display:flex;flex-direction:column;gap:6px}
+/* ===== أنماط الأتوبيس المحفوظة ===== */
+.tplbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--tint);border:1px solid var(--line);border-radius:12px;padding:8px;margin:6px 0}
+.tplbar select{width:auto;flex:1 1 170px;min-width:150px;padding:6px 8px;min-height:38px}
 /* ===== الحجز لأكتر من شخص (ضيوف) ===== */
 .party{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;justify-content:center}
 .pc{position:relative;display:inline-block}
@@ -634,7 +645,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
     <h3 class="mt" id="askTitle"></h3>
     <p id="askMsg"></p>
     <textarea id="askInput" data-t="long" rows="3" hidden placeholder="اكتب السبب..."></textarea>
-    <input id="askLine" type="text" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" hidden>
+    <input id="askLine" type="text" dir="auto" autocomplete="off" autocapitalize="off" spellcheck="false" hidden>
     <div class="row" style="margin-top:10px"><button class="btn pri" id="askOk">تأكيد</button><button class="btn" id="askCancel">إلغاء</button></div>
   </div>
 </div>
@@ -645,8 +656,8 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 <script>
 // رابط الـ Web App يُقرأ من ملف config.js (لا تعدّل هنا)
 const API_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || '';
-// لازم يطابق APP_VERSION في Code.gs. لو مختلف يظهر تنبيه "الخادم قديم" فوق الصفحة.
-const EXPECTED_VERSION = '2026-10-25-guests-v8';
+// لازم يطابق APP_VERSION في Code.gs، وPORTAL_VER في portal.js، وCONF_VER في conferences.js، ورقم ?v= في أول index.html.
+const EXPECTED_VERSION = '2026-10-26-poster-v9';
 
 /* =========================================================
    الاسم المعتمد (مكان واحد): أي مكان في الموقع فيه اسم الكنيسة أو الاجتماع بيقرأ من هنا
@@ -1246,13 +1257,30 @@ function openCropper(bmp) {
 }
 
 /* =========================================================
+   التنبيهات فوق الصفحة (متعددة: خادم قديم / ملفات JS قديمة)
+   ========================================================= */
+const sysMsgs = {};
+function sysBanner(msg, key) {
+  sysMsgs[key || 'srv'] = msg || '';
+  const list = Object.keys(sysMsgs).map(k => sysMsgs[k]).filter(Boolean);
+  $('#sysMsg').innerHTML = list.map(esc).join('<hr style="border:0;border-top:1px dashed #f1c3bd;margin:8px 0">');
+  $('#sysBanner').hidden = !list.length;
+}
+// لو portal.js أو conferences.js على الموقع نسخة قديمة (كاش/ما اترفعش) بنقول ده بوضوح بدل ما الأزرار تتصرف غلط
+(function fileCheck() {
+  const stale = [];
+  if (typeof PORTAL_VER === 'undefined' || PORTAL_VER !== EXPECTED_VERSION) stale.push('portal.js');
+  if (window.CONF_VER !== EXPECTED_VERSION) stale.push('conferences.js');
+  if (stale.length) sysBanner('ملف ' + stale.join(' و ') + ' على موقعك نسخة قديمة (إما مخزّنة في المتصفح أو لسه ما اترفعش الجديد على GitHub). ارفع النسخة الجديدة وبعدها اعمل تحديث إجباري Ctrl+F5 (على الموبايل: امسح بيانات الموقع). لحد ما ده يحصل ممكن الاشتراك والحجز يدّوا أخطاء.', 'files');
+})();
+
+/* =========================================================
    التسجيل
    ========================================================= */
 const regHost = $('#regForm');
 mountForm(regHost, { photos: true });
 let regBusy = false, regOpen = true;
 function setOpenUI(open) { regOpen = open; $('#closedBox').hidden = open; $('#regBtn').disabled = !open; }
-function sysBanner(msg) { $('#sysMsg').textContent = msg || ''; $('#sysBanner').hidden = !msg; }
 
 api('info').then(r => {
   if (!r.ok) return sysBanner(r.error);
@@ -1456,7 +1484,7 @@ function upsertRow(row, oldNid) {
 }
 const byNid = n => A.rows.find(r => r.nid === n);
 
-/* نافذة تأكيد/إدخال. input: false | true (سبب) | 'line' (سطر LTR مثل كلمة مرور) */
+/* نافذة تأكيد/إدخال. input: false | true (سبب) | 'line' (سطر: اسم نمط، كلمة مرور...) */
 function ask({ title, msg, input, okText }) {
   return new Promise(res => {
     $('#askTitle').textContent = title; $('#askMsg').textContent = msg || '';
