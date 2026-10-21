@@ -1,8 +1,10 @@
 /* =====================================================================
    conferences.js — موديول المؤتمرات (واجهة العضو + واجهة الأدمن) + الضيوف (اسم + نوع + تليفون + موافقة الأدمن)
+   + «الغرف المسموحة»: الأدمن يحدد لكل مؤتمر (افتراضي) ولكل شخص هل يحجز غرفة من نفس جنسه / غرفة مشتركة / الاتنين.
    بيتحمّل بعد portal.js. التابات والحاويات (#memConf / #admConf) موجودة في index.html، والملف ده بيعرّف window.confModule
    وبيستخدم الدوال الموجودة (pModal / busHTML / BusEditor / askGuest / askJoinGuests / openGuestsManager / mcall / adm / ask / toast ...).
    ===================================================================== */
+window.CONF_VER = '2026-10-26-poster-v9';             // لازم يطابق EXPECTED_VERSION في index.html (لو اختلف بيظهر تنبيه "ملف قديم")
 (function () {
   'use strict';
   if (window.__confModule) return; window.__confModule = true;
@@ -33,6 +35,8 @@
   .cf-quick{background:var(--tint);border:1px solid var(--line);border-radius:12px;padding:8px;margin:6px 0 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .cf-quick input,.cf-quick select{width:auto;padding:6px 8px}
   .cf-sec{margin:14px 0 4px;color:var(--brown)}
+  .cf-acc{margin-top:6px;font-size:12.5px;min-height:34px;padding:4px 6px;max-width:210px}
+  .cf-accl{display:block;font-size:11.5px;color:var(--mut);margin-top:4px}
   @media(max-width:640px){.cf-rrow{grid-template-columns:1fr 1fr}.cf-rrow button{grid-column:2}.cf-rrow [data-r=name]{grid-column:1/-1}.cf-rrow [data-r=note]{grid-column:1/-1}}
   `;
 
@@ -52,6 +56,9 @@
   const shortName = pShort;
   const gLabel = g => g === 'ذكر' ? 'للشباب' : g === 'أنثى' ? 'للبنات' : 'للجميع';
   const gBadge = g => g === 'ذكر' ? 'b' : g === 'أنثى' ? 's' : 'g';
+  // الغرف المسموحة: own = غرفة من نفس جنسه فقط | mixed = غرفة مشتركة فقط | both = الاتنين
+  const ACC = { own: 'غرفة من نفس جنسه فقط', mixed: 'غرفة مشتركة فقط', both: 'غرفة من نفس جنسه أو مشتركة' };
+  const accConflict = (room, acc) => (!room.gender && acc === 'own') || (!!room.gender && acc === 'mixed');
   const ST = { draft: ['مسودة', 'g'], open: ['مفتوح للحجز', 'o'], closed: ['مغلق', 'p'] };
   const BK = { requested: ['طلب جديد', 'p'], accepted: ['مقبول', 'o'], rejected: ['مرفوض', 'n'], cancelled: ['ملغي', 'g'] };
   let probed = false;
@@ -82,7 +89,8 @@
       if (c.useBus) bits.push(my.seat ? `🚌 مقعد <b>${my.seat}</b>` : '🚌 لسه ما اخترتش مقعد');
       if (c.bedsTotal) bits.push(my.bed ? `🛏️ ${esc(my.roomName || 'غرفة')} · سرير <b>${my.bed}</b>` : '🛏️ لسه ما اخترتش سرير');
       const gseat = gs.filter(g => g.seat).length, gbed = gs.filter(g => g.bed).length;
-      return `<div class="cf-mine">${bits.join(' &nbsp;·&nbsp; ') || 'تم قبولك'}</div><div class="row" style="margin-top:8px">
+      const acc = c.bedsTotal && my.roomAccess && my.roomAccess !== 'both' ? `<span class="cf-accl">🛏️ الغرف المسموحة ليك: ${esc(ACC[my.roomAccess])}</span>` : '';
+      return `<div class="cf-mine">${bits.join(' &nbsp;·&nbsp; ') || 'تم قبولك'}</div>${acc}<div class="row" style="margin-top:8px">
         <button class="btn gold" data-act="open">${open ? ((my.seat || my.bed || gseat || gbed) ? '✎ تعديل حجزي' : '🏨 اختيار المقعد والسرير') : '👁 عرض حجزي'}</button>${gbtn}${cancel}</div>${gsum}`;
     }
     if (my.status === 'rejected') return `<div class="notice bad">تم رفض طلب الاشتراك${my.reason ? ': ' + esc(my.reason) : ''}</div>${open ? '<button class="btn pri" data-act="join">إعادة الطلب</button>' : ''}`;
@@ -121,7 +129,12 @@
           guests = await askJoinGuests({ title: 'طلب الاشتراك في «' + c.title + '»', what: 'المؤتمر', max: c.maxPeople, withGender: true });
           if (!guests) return;
         }
-        const r = await mcall('confJoin', guests ? { confId: id, guests } : { confId: id });
+        let r = await mcall('confJoin', guests ? { confId: id, guests } : { confId: id });
+        if (!r.ok && r.needGuests && !guests) {
+          guests = await askJoinGuests({ title: 'طلب الاشتراك في «' + (c ? c.title : 'المؤتمر') + '»', what: 'المؤتمر', max: r.needGuests, withGender: true });
+          if (!guests) { await loadMember(); return; }
+          r = await mcall('confJoin', { confId: id, guests });
+        }
         toast(r.ok ? (guests && guests.length ? 'تم إرسال الطلب ✔ والضيوف بانتظار موافقة الإدارة' : 'تم إرسال طلب الاشتراك ✔') : r.error, r.ok ? 'ok' : 'err');
       } else if (act === 'cancel') {
         if (!await ask({ title: 'إلغاء الاشتراك', msg: `إلغاء اشتراكك في «${c ? c.title : 'المؤتمر'}»؟ مقاعدك وأسرّتك ومقاعد وأسرّة ضيوفك (لو فيه) هيتحرروا.`, okText: 'إلغاء الاشتراك' })) return;
@@ -156,7 +169,8 @@
     const rName = id => { const r = (st.rooms || []).find(x => x.id === id); return r ? r.name : ''; };
 
     const roomHTML = (r, cur) => {
-      const restricted = !!(r.gender && r.gender !== cur.gender), taken = Object.keys(r.occ).length, open = st.conf.status === 'open';
+      const genderBad = !!(r.gender && r.gender !== cur.gender), accessBad = accConflict(r, st.my.roomAccess || 'both'), restricted = genderBad || accessBad;
+      const taken = Object.keys(r.occ).length, open = st.conf.status === 'open', who_ = cur.guest ? shortName(cur.name) : 'حضرتك';
       const beds = [];
       for (let b = 1; b <= r.beds; b++) {
         const o = r.occ[b]; let cls = 'cf-bed', nm = '', title = '';
@@ -165,7 +179,8 @@
         else { cls += ' free'; if (selBed && selBed.room === r.id && selBed.bed === b) cls += ' sel'; }
         beds.push(`<button type="button" class="${cls}" data-room="${esc(r.id)}" data-bed="${b}" title="${esc(title)}"><span class="n">${b}</span><span class="w">${esc(nm)}</span></button>`);
       }
-      return `<div class="cf-room${restricted ? ' rs' : ''}"><div class="cf-rh"><b>🛏️ ${esc(r.name)}</b><span class="badge ${gBadge(r.gender)}">${gLabel(r.gender)}</span><small>${taken}/${r.beds} محجوز${restricted ? ' · مش لنوع ' + esc(cur.guest ? shortName(cur.name) : 'حضرتك') : ''}</small></div>
+      const why = genderBad ? ' · مش لنوع ' + esc(who_) : accessBad ? ' · الإدارة ما سمحتش بيها ليك' : '';
+      return `<div class="cf-room${restricted ? ' rs' : ''}"><div class="cf-rh"><b>🛏️ ${esc(r.name)}</b><span class="badge ${gBadge(r.gender)}">${gLabel(r.gender)}</span><small>${taken}/${r.beds} محجوز${why}</small></div>
         ${r.note ? `<div class="hint">${esc(r.note)}</div>` : ''}<div class="cf-beds">${beds.join('')}</div></div>`;
     };
 
@@ -193,10 +208,11 @@
         const act = open ? `<div class="row" style="justify-content:center;margin-top:8px">${selSeat && selSeat !== cur.seat ? `<button class="btn gold" data-do="takeSeat">${cur.seat ? 'نقل مقعد ' + esc(who_) + ' إلى ' : 'احجز المقعد '}${selSeat}${cur.seat ? '' : ' لـ ' + esc(who_)}</button>` : ''}${cur.seat ? `<button class="btn" data-do="relSeat">إلغاء مقعد ${esc(who_)}</button>` : ''}</div>` : '';
         main = `<div style="text-align:center">${open ? `<div class="hint">${multi ? 'اختار الشخص فوق، وبعدين اضغط على مقعد أخضر واضغط «احجز».' : 'اضغط على مقعد أخضر، وبعدين اضغط «احجز».'}</div>` : ''}${BUS_LEGEND}${busHTML(st.layout, { mode: 'pick', occupied: st.occupied, mine: cur.seat, mineSet: set, sel: selSeat, names })}${act}</div>`;
       } else {
-        const sel = selBed && st.rooms.find(r => r.id === selBed.room);
+        const sel = selBed && st.rooms.find(r => r.id === selBed.room), acc = my.roomAccess || 'both';
+        const accNote = acc !== 'both' ? `<div class="notice info" style="margin:6px 0">🛏️ الإدارة سمحتلك بـ: <b>${esc(ACC[acc])}</b>${multi ? ' (وده بينطبق على ضيوفك كمان)' : ''}.</div>` : '';
         const act = open ? `<div class="row" style="justify-content:center;margin:8px 0">${selBed && !(selBed.room === cur.roomId && selBed.bed === cur.bed) ? `<button class="btn gold" data-do="takeBed">${cur.bed ? 'نقل سرير ' : 'احجز '}${esc(who_)} · ${esc(sel ? sel.name : '')} · سرير ${selBed.bed}</button>` : ''}${cur.bed ? `<button class="btn" data-do="relBed">إلغاء سرير ${esc(who_)}</button>` : ''}</div>` : '';
-        main = `${open ? `<div class="hint" style="text-align:center">${multi ? 'اختار الشخص فوق، وبعدين اضغط على سرير أخضر واضغط «احجز». ' : 'اضغط على سرير أخضر، وبعدين اضغط «احجز». '}الأسماء ظاهرة عشان تعرف مين حاجز فين.</div>` : ''}
-          <div class="legend"><span><i style="background:#e8f4ec;border-color:#1f7a45"></i>متاح</span><span><i style="background:#e9e3d6;border-color:#cfc4ad"></i>محجوز</span><span><i style="background:#c8a24a;border-color:#96601a"></i>حجزك</span><span><i style="background:#f4efe3;border-color:#cfc4ad"></i>مش لنوع الشخص</span></div>
+        main = `${accNote}${open ? `<div class="hint" style="text-align:center">${multi ? 'اختار الشخص فوق، وبعدين اضغط على سرير أخضر واضغط «احجز». ' : 'اضغط على سرير أخضر، وبعدين اضغط «احجز». '}الأسماء ظاهرة عشان تعرف مين حاجز فين.</div>` : ''}
+          <div class="legend"><span><i style="background:#e8f4ec;border-color:#1f7a45"></i>متاح</span><span><i style="background:#e9e3d6;border-color:#cfc4ad"></i>محجوز</span><span><i style="background:#c8a24a;border-color:#96601a"></i>حجزك</span><span><i style="background:#f4efe3;border-color:#cfc4ad"></i>مش مسموح للشخص ده</span></div>
           ${act}${st.rooms.map(r => roomHTML(r, cur)).join('')}`;
       }
       body.innerHTML = head + tabs + note + main;
@@ -212,7 +228,7 @@
       if (r.same) return;
       v = r.v; st = r;
       if (selSeat && st.occupied && st.occupied[selSeat]) { selSeat = 0; toast('المقعد اللي اخترته اتحجز لشخص تاني', 'err'); }
-      if (selBed) { const rm = (st.rooms || []).find(x => x.id === selBed.room); if (!rm || (rm.occ[selBed.bed] && !rm.occ[selBed.bed].me)) { selBed = null; toast('السرير اللي اخترته اتحجز لشخص تاني', 'err'); } }
+      if (selBed) { const rm = (st.rooms || []).find(x => x.id === selBed.room); if (!rm || (rm.occ[selBed.bed] && !rm.occ[selBed.bed].me) || accConflict(rm, st.my.roomAccess || 'both')) { selBed = null; toast('السرير اللي اخترته مبقاش متاح', 'err'); } }
       draw();
     };
 
@@ -276,7 +292,7 @@
     $('#admConf').innerHTML = `<div class="row" style="margin-bottom:10px"><button class="btn ok" data-c="new">➕ مؤتمر جديد</button></div>` +
       (CA.items.length ? CA.items.map(c => { const s = ST[c.status] || ['', 'g'];
         return `<div class="trip" data-id="${esc(c.id)}"><div class="row" style="justify-content:space-between"><h4>🏨 ${esc(c.title)}</h4><span class="badge ${s[1]}">${s[0]}</span></div>
-          <div class="tmeta"><span>📍 ${esc(c.destination)}</span><span>📅 ${esc(range(c))}</span><span>⏱ ${esc(spanText(c.days, c.nights))}</span><span>👥 ${c.maxPeople > 1 ? 'لحد ' + c.maxPeople + ' أشخاص لكل عضو' : 'شخص واحد لكل عضو'}</span></div>
+          <div class="tmeta"><span>📍 ${esc(c.destination)}</span><span>📅 ${esc(range(c))}</span><span>⏱ ${esc(spanText(c.days, c.nights))}</span><span>👥 ${c.maxPeople > 1 ? 'لحد ' + c.maxPeople + ' أشخاص لكل عضو' : 'شخص واحد لكل عضو'}</span>${c.bedsTotal ? `<span>🛏️ الغرف المسموحة: ${esc(ACC[c.roomAccess] || ACC.both)}</span>` : ''}</div>
           <div class="tmeta"><span>🕓 طلبات جديدة: <b>${c.requested}</b></span><span>✔ مقبولين: <b>${c.accepted}</b></span>${c.guestsCount ? `<span>➕ ضيوف: <b>${c.guestsCount}</b></span>` : ''}${c.pendingGuests ? `<span class="badge p">⏳ ضيوف بانتظار موافقتك: ${c.pendingGuests}</span>` : ''}${c.useBus ? `<span>🚌 ${c.seatsTaken}/${c.seatsTotal}</span>` : ''}${c.bedsTotal ? `<span>🛏️ ${c.bedsTaken}/${c.bedsTotal} (${c.roomsCount} غرفة)</span>` : ''}${c.unplaced ? `<span style="color:var(--warn)">⚠ بدون سكن: <b>${c.unplaced}</b></span>` : ''}</div>
           <div class="acts"><button class="btn sm pri" data-c="open">📋 إدارة المؤتمر</button><button class="btn sm" data-c="edit">✎ تعديل</button></div></div>`; }).join('')
         : '<div class="empty">مفيش مؤتمرات. اضغط «مؤتمر جديد».</div>');
@@ -298,6 +314,9 @@
       <div class="field"><label>تفاصيل المؤتمر</label><textarea data-e="details" rows="4" maxlength="2000" placeholder="البرنامج، المطلوب من المشترك، مواعيد الحركة..."></textarea></div>
       <div class="field"><label>👥 عدد الأشخاص المسموح للعضو الواحد يحجز لهم</label><select data-e="maxPeople">${maxPeopleOptions()}</select>
         <small class="hint">لو اخترت أكتر من 1: العضو لازم يحدد ضيوفه (اسم + نوع + تليفون) وقت طلب الاشتراك، وأنت بتوافق على كل ضيف قبل ما يقدر يحجز له مقعد وسرير. الحد ده ما يتخطّاش.</small></div>
+      <div class="field"><label>🛏️ الغرف المسموحة للأعضاء (الافتراضي لكل المشتركين)</label>
+        <select data-e="roomAccess"><option value="both">${ACC.both}</option><option value="own">${ACC.own}</option><option value="mixed">${ACC.mixed}</option></select>
+        <small class="hint">«الغرفة المشتركة» = غرفة نوعها «للجميع». تقدر تغيّر ده لكل شخص لوحده من «إدارة المؤتمر» بعد ما يتقبل. وأنت كأدمن بتقدر تسكّن أي حد في أي غرفة.</small></div>
       <label class="chk"><input type="checkbox" data-e="useCode"> 🔑 الدخول لاختيار المقعد والسرير بكود من 4 خانات (بيتولّد لما تقبل اشتراك الشخص وبتبعته له)</label>
       <h4 class="cf-sec">🚌 الأتوبيس</h4>
       <label class="chk"><input type="checkbox" data-e="useBus"> فيه حجز أتوبيس للمؤتمر ده</label>
@@ -305,7 +324,7 @@
       <h4 class="cf-sec">🛏️ الغرف</h4>
       <div class="hint">كل غرفة بتتعمل لوحدها بعدد أسرّتها واسمها. الأعضاء بيشوفوا كل الغرف ومين حاجز فين ويختاروا سريرهم.</div>
       <div class="cf-quick">⚡ إنشاء سريع: <input type="number" data-q="count" min="1" max="40" value="5" style="width:68px"> غرفة × <input type="number" data-q="beds" min="1" max="12" value="2" style="width:62px"> سرير
-        <select data-q="gender"><option value="">للجميع</option><option value="ذكر">للشباب</option><option value="أنثى">للبنات</option></select><button type="button" class="btn sm pri" data-q="go">إنشاء</button></div>
+        <select data-q="gender"><option value="">للجميع (مشتركة)</option><option value="ذكر">للشباب</option><option value="أنثى">للبنات</option></select><button type="button" class="btn sm pri" data-q="go">إنشاء</button></div>
       <div data-e="rooms"></div>
       <div class="row"><button type="button" class="btn sm ok" data-q="add">➕ إضافة غرفة</button><span class="hint" data-e="rsum"></span></div>
       <div class="formerr" data-e="err" hidden></div>`,
@@ -313,7 +332,7 @@
     const e = k => m.q(`[data-e="${k}"]`), q = k => m.q(`[data-q="${k}"]`);
     e('title').value = c ? c.title : ''; e('status').value = c ? c.status : 'draft'; e('destination').value = c ? c.destination : ''; e('price').value = c ? c.price : '';
     e('dateFrom').value = c ? c.dateFrom : ''; e('dateTo').value = c ? c.dateTo : ''; e('details').value = c ? c.details : '';
-    e('useCode').checked = c ? c.useCode : true; e('useBus').checked = c ? c.useBus : true; e('maxPeople').value = String(c ? c.maxPeople : 1);
+    e('useCode').checked = c ? c.useCode : true; e('useBus').checked = c ? c.useBus : true; e('maxPeople').value = String(c ? c.maxPeople : 1); e('roomAccess').value = c ? (c.roomAccess || 'both') : 'both';
 
     const spanBox = () => {                                                              // المدة بتتحسب لحظيًا
       const f = e('dateFrom').value, t = e('dateTo').value, s = calcSpan(f, t);
@@ -324,7 +343,7 @@
     const bus = BusEditor(e('bus'), c && c.layout ? { cells: c.layout.cells, nums: c.layout.nums, locked: c.seatsBooked } : null);
     const busToggle = () => { e('busBox').hidden = !e('useBus').checked; }; e('useBus').onchange = busToggle; busToggle();
 
-    const gOpts = g => `<option value=""${g === '' ? ' selected' : ''}>للجميع</option><option value="ذكر"${g === 'ذكر' ? ' selected' : ''}>للشباب</option><option value="أنثى"${g === 'أنثى' ? ' selected' : ''}>للبنات</option>`;
+    const gOpts = g => `<option value=""${g === '' ? ' selected' : ''}>للجميع (مشتركة)</option><option value="ذكر"${g === 'ذكر' ? ' selected' : ''}>للشباب</option><option value="أنثى"${g === 'أنثى' ? ' selected' : ''}>للبنات</option>`;
     const drawRooms = () => {
       e('rooms').innerHTML = rooms.map((r, i) => { const o = r.id && occ[r.id] ? occ[r.id] : [], mx = o.length ? Math.max.apply(null, o) : 0;
         return `<div class="cf-rrow" data-i="${i}"><input data-r="name" maxlength="40" placeholder="اسم الغرفة" value="${esc(r.name)}">
@@ -348,7 +367,7 @@
     e('save').onclick = async () => {
       const err = e('err'); err.hidden = true; const bad = t => { err.textContent = t; err.hidden = false; err.scrollIntoView({ block: 'center' }); };
       const body = { id: c ? c.id : undefined, title: e('title').value.trim(), status: e('status').value, destination: e('destination').value.trim(), price: e('price').value.trim(),
-        dateFrom: e('dateFrom').value, dateTo: e('dateTo').value, details: e('details').value, useCode: e('useCode').checked, useBus: e('useBus').checked, maxPeople: +e('maxPeople').value,
+        dateFrom: e('dateFrom').value, dateTo: e('dateTo').value, details: e('details').value, useCode: e('useCode').checked, useBus: e('useBus').checked, maxPeople: +e('maxPeople').value, roomAccess: e('roomAccess').value,
         layout: e('useBus').checked ? bus.getLayout() : null,
         rooms: rooms.map(r => ({ id: r.id, name: String(r.name || '').trim(), beds: parseInt(r.beds, 10), gender: r.gender || '', note: String(r.note || '').trim() })) };
       if (!body.title) return bad('اكتب اسم المؤتمر.');
@@ -364,7 +383,7 @@
     };
   }
 
-  /* ---------- نافذة إدارة المؤتمر: الطلبات + الضيوف (موافقة/رفض) + الأتوبيس + التسكين ---------- */
+  /* ---------- نافذة إدارة المؤتمر: الطلبات + الضيوف (موافقة/رفض) + الغرف المسموحة + الأتوبيس + التسكين ---------- */
   async function openManage(id) {
     const m = pModal('إدارة المؤتمر', pSpin, '', { tag: 'admin' });
     const body = m.q('.bd'); let D = null;
@@ -377,7 +396,7 @@
       const cand = []; D.bookings.forEach(b => { if (b.status === 'accepted') peopleOf(b).forEach(p => { if (!(p.roomId && p.bed)) cand.push(p); }); });
       if (!cand.length) return toast('مفيش حد مقبول من غير سرير', 'err');
       cand.sort((a, b) => a.name < b.name ? -1 : 1);
-      const pm = pModal('تسكين: ' + room.name + ' — سرير ' + bedNo, `<div class="field"><label>اختر الشخص</label><select data-p="who">${cand.map(p => `<option value="${esc(p.bk.id + '|' + p.who)}">${esc(p.name)} (${p.gender === 'أنثى' ? 'أنثى' : 'ذكر'})${p.guest ? ' — ضيف ' + esc(shortName(p.bk.name)) : ''}${room.gender && room.gender !== p.gender ? ' ⚠' : ''}</option>`).join('')}</select></div><div class="hint">⚠ = نوعه مختلف عن نوع الغرفة (الأدمن يقدر يتخطى القيد ده).</div>`,
+      const pm = pModal('تسكين: ' + room.name + ' — سرير ' + bedNo, `<div class="field"><label>اختر الشخص</label><select data-p="who">${cand.map(p => `<option value="${esc(p.bk.id + '|' + p.who)}">${esc(p.name)} (${p.gender === 'أنثى' ? 'أنثى' : 'ذكر'})${p.guest ? ' — ضيف ' + esc(shortName(p.bk.name)) : ''}${(room.gender && room.gender !== p.gender) || accConflict(room, p.bk.roomAccessEff) ? ' ⚠' : ''}</option>`).join('')}</select></div><div class="hint">⚠ = نوعه أو «الغرف المسموحة» ليه مختلفة عن الغرفة دي (الأدمن يقدر يتخطى القيد ده).</div>`,
         '<button class="btn pri" data-p="ok">تسكين</button><button class="btn" data-p="no">إلغاء</button>', { narrow: true, tag: 'admin' });
       pm.q('[data-p="no"]').onclick = pm.close;
       pm.q('[data-p="ok"]').onclick = async () => { const [bid, w] = pm.q('[data-p="who"]').value.split('|'); pm.close(); await act('confAssignBed', { id: bid, who: w, roomId: room.id, bed: bedNo }, 'تم التسكين'); };
@@ -401,6 +420,7 @@
         for (let i = 1; i <= r.beds; i++) { const k = r.id + ':' + i, who = byBed[k], me = cur === k, mis = r.gender && r.gender !== gender ? ' ⚠' : '';
           o += `<option value="${k}"${me ? ' selected' : ''}${who && !me ? ' disabled' : ''}>سرير ${i}${mis}${who && !me ? ' - ' + esc(shortName(who.name)) : ''}</option>`; } o += '</optgroup>'; }); return o; };
       const selects = p => `<td>${c.useBus ? `<select data-seat style="min-width:110px">${seatOpts(p.seat)}</select>` : '—'}</td><td>${rooms.length ? `<select data-bed style="min-width:150px">${bedOpts(p.roomId && p.bed ? p.roomId + ':' + p.bed : '', p.gender)}</select>` : '—'}</td>`;
+      const accSel = b => `<span class="cf-accl">🛏️ الغرف المسموحة (ليه ولضيوفه):</span><select class="cf-acc" data-access><option value=""${b.roomAccess === '' ? ' selected' : ''}>حسب الافتراضي (${esc(ACC[c.roomAccess] || ACC.both)})</option>${Object.keys(ACC).map(k => `<option value="${k}"${b.roomAccess === k ? ' selected' : ''}>${esc(ACC[k])}</option>`).join('')}</select>`;
       const rows = B.map(b => { const st = BK[b.status] || ['', 'g'], live = b.status === 'requested' || b.status === 'accepted', pend = b.guests.filter(g => gstOf(g) === 'p').length;
         const wa = 'https://wa.me/2' + b.whatsapp + '?text=' + encodeURIComponent(`سلام ونعمة ${b.name.split(' ')[0]} 🙏\nتم قبول اشتراكك في مؤتمر «${c.title}» (${range(c)}) - ${c.destination}.\nكود المؤتمر الخاص بيك: ${b.confCode}\nادخل موقع الأعضاء ← المؤتمرات ← اكتب الكود واختار مقعدك وسريرك${c.maxPeople > 1 ? ' (وتقدر تحجز لضيوفك اللي اتوافق عليهم)' : ''}.`);
         const canAddG = c.maxPeople > 1 && guestsLive(b.guests).length + 1 < c.maxPeople;
@@ -408,7 +428,7 @@
         if (b.status === 'requested') a = `<button class="btn sm ok" data-d="accept">✔ قبول</button>${pend ? '<button class="btn sm ok" data-d="acceptg">✔ قبول مع الضيوف</button>' : ''}<button class="btn sm bad" data-d="reject">✖ رفض</button>${canAddG ? '<button class="btn sm" data-d="addg">➕ ضيف</button>' : ''}`;
         else if (b.status === 'accepted') a = `${b.confCode ? `<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${wa}">📲 إرسال الكود</a>` : ''}${canAddG ? '<button class="btn sm" data-d="addg">➕ ضيف</button>' : ''}<button class="btn sm" data-d="cancel">إلغاء</button>`;
         else a = `<button class="btn sm ok" data-d="accept">✔ قبول</button>`;
-        const main = `<tr data-b="${esc(b.id)}"><td><b>${esc(b.name)}</b> <span class="badge ${b.gender === 'أنثى' ? 's' : 'g'}">${b.gender === 'أنثى' ? 'أنثى' : 'ذكر'}</span><br><small class="ltr" style="display:inline-block">${esc(b.code)} · ${esc(b.whatsapp)}</small>${b.note ? `<br><small style="color:var(--bad)">${esc(b.note)}</small>` : ''}${pend ? `<br><span class="badge p">⏳ ${pend} ضيف بانتظار موافقتك</span>` : ''}</td>
+        const main = `<tr data-b="${esc(b.id)}"><td><b>${esc(b.name)}</b> <span class="badge ${b.gender === 'أنثى' ? 's' : 'g'}">${b.gender === 'أنثى' ? 'أنثى' : 'ذكر'}</span><br><small class="ltr" style="display:inline-block">${esc(b.code)} · ${esc(b.whatsapp)}</small>${b.note ? `<br><small style="color:var(--bad)">${esc(b.note)}</small>` : ''}${pend ? `<br><span class="badge p">⏳ ${pend} ضيف بانتظار موافقتك</span>` : ''}${live && rooms.length ? '<br>' + accSel(b) : ''}</td>
           <td><span class="badge ${st[1]}">${st[0]}</span>${b.status === 'accepted' && c.useCode ? `<br><b class="ltr" style="display:inline-block;letter-spacing:2px">${esc(b.confCode)}</b><br><small>${b.verified ? '✔ دخل بالكود' : 'لسه ما دخلش'}</small>` : ''}</td>
           ${b.status === 'accepted' ? selects({ seat: b.seat, roomId: b.roomId, bed: b.bed, gender: b.gender }) : '<td>—</td><td>—</td>'}<td><div class="acts">${a}</div></td></tr>`;
         const gr = live ? b.guests.map(g => { const gs = gstOf(g), sel = gs === 'a' && b.status === 'accepted';
@@ -423,7 +443,7 @@
           beds.push(`<button type="button" class="cf-bed adm ${w ? 'taken' : 'free'}" data-room="${esc(r.id)}" data-bed="${i}" title="${w ? esc(w.label) : 'سرير فاضي — اضغط للتسكين'}"><span class="n">${i}</span><span class="w">${w ? esc(shortName(w.name)) : ''}</span></button>`); }
         return `<div class="cf-room"><div class="cf-rh"><b>🛏️ ${esc(r.name)}</b><span class="badge ${gBadge(r.gender)}">${gLabel(r.gender)}</span><small>${taken}/${r.beds}</small></div>${r.note ? `<div class="hint">${esc(r.note)}</div>` : ''}<div class="cf-beds">${beds.join('')}</div></div>`; }).join('');
       body.innerHTML = `<div class="row" style="justify-content:space-between"><div><b>${esc(c.title)}</b> <span class="badge ${s[1]}">${s[0]}</span>
-        <div class="hint">📍 ${esc(c.destination)} · ${esc(range(c))} · ⏱ ${esc(spanText(c.days, c.nights))}${c.price ? ' · 💰 ' + esc(c.price) : ''} · الأشخاص: ${people}${c.maxPeople > 1 ? ' · الحد لكل عضو: ' + c.maxPeople : ''}</div></div>
+        <div class="hint">📍 ${esc(c.destination)} · ${esc(range(c))} · ⏱ ${esc(spanText(c.days, c.nights))}${c.price ? ' · 💰 ' + esc(c.price) : ''} · الأشخاص: ${people}${c.maxPeople > 1 ? ' · الحد لكل عضو: ' + c.maxPeople : ''}${rooms.length ? ' · الغرف المسموحة افتراضيًا: ' + esc(ACC[c.roomAccess] || ACC.both) : ''}</div></div>
         <div class="acts"><button class="btn sm" data-t2="edit">✎ تعديل المؤتمر</button><button class="btn sm" data-t2="xls">⬇ Excel</button><button class="btn sm bad" data-t2="del">🗑 حذف المؤتمر</button></div></div>
         ${pendingAll ? `<div class="notice warn" style="margin-top:8px">⏳ فيه <b>${pendingAll}</b> ضيف بانتظار موافقتك (الصفوف المظلّلة في الجدول). الضيف ما يقدرش يتحجز له مقعد أو سرير غير بعد موافقتك.</div>` : ''}
         ${c.useBus && L ? `<h4 class="cf-sec">🚌 خريطة الأتوبيس <small class="hint" style="display:inline">(اضغط على مقعد محجوز لتحريره) · ${Object.keys(occSeat).length}/${c.seatsTotal}</small></h4><div style="text-align:center">${BUS_LEGEND}${busHTML(L, { mode: 'admin', occupied: occSeat, names })}</div>` : ''}
@@ -439,6 +459,13 @@
       const tr = ev.target.closest('tr[data-b]'); if (!tr) return; const w = tr.dataset.g || 'me';
       if (ev.target.matches('[data-seat]')) await act('confAssignSeat', { id: tr.dataset.b, who: w, seat: +ev.target.value }, 'تم');
       else if (ev.target.matches('[data-bed]')) { const v = ev.target.value, p = v ? v.split(':') : ['', 0]; await act('confAssignBed', { id: tr.dataset.b, who: w, roomId: p[0], bed: +p[1] || 0 }, v ? 'تم التسكين' : 'تم تحرير السرير'); }
+      else if (ev.target.matches('[data-access]')) {
+        const r = await adm('confSetAccess', { id: tr.dataset.b, roomAccess: ev.target.value }, 60000);
+        if (!r.ok) toast(r.error, 'err');
+        else if (r.conflicts && r.conflicts.length) pInfo('تم الحفظ مع تنبيه', ['سرير ' + r.conflicts.join('، ') + ' محجوز في غرفة خارج المسموح الجديد. ما اتحررش تلقائيًا؛ حرّره من لوحة التسكين لو عايز.'], 'warn');
+        else toast('تم تحديد الغرف المسموحة: ' + ACC[r.roomAccessEff], 'ok');
+        await load(); loadAdmin();
+      }
     });
     body.addEventListener('click', async ev => {
       const seat = ev.target.closest('.bus.adm .c.taken');
@@ -470,10 +497,10 @@
       if (t2 === 'xls') {
         if (!window.XLSX) return toast('مكتبة Excel لم تُحمّل', 'err');
         const roomName = {}; (D.conf.rooms || []).forEach(r => { roomName[r.id] = r.name; });
-        const aoa = [['الاسم', 'النوع', 'عضو/ضيف', 'صاحب الحجز', 'كود العضو', 'الواتساب / تليفون الضيف', 'حالة الحجز', 'موافقة الضيف', 'كود المؤتمر', 'المقعد', 'الغرفة', 'السرير']];
+        const aoa = [['الاسم', 'النوع', 'عضو/ضيف', 'صاحب الحجز', 'كود العضو', 'الواتساب / تليفون الضيف', 'حالة الحجز', 'موافقة الضيف', 'الغرف المسموحة', 'كود المؤتمر', 'المقعد', 'الغرفة', 'السرير']];
         D.bookings.forEach(b => { const stl = (BK[b.status] || [''])[0];
-          aoa.push([b.name, b.gender, 'عضو', '', b.code, b.whatsapp, stl, '', b.confCode || '', b.seat || '', roomName[b.roomId] || '', b.bed || '']);
-          b.guests.forEach(g => aoa.push([g.name, g.gender, 'ضيف', b.name, '', g.phone || '', stl, (GST[gstOf(g)] || [''])[0], '', g.seat || '', roomName[g.roomId] || '', g.bed || ''])); });
+          aoa.push([b.name, b.gender, 'عضو', '', b.code, b.whatsapp, stl, '', ACC[b.roomAccessEff] || '', b.confCode || '', b.seat || '', roomName[b.roomId] || '', b.bed || '']);
+          b.guests.forEach(g => aoa.push([g.name, g.gender, 'ضيف', b.name, '', g.phone || '', stl, (GST[gstOf(g)] || [''])[0], '', '', g.seat || '', roomName[g.roomId] || '', g.bed || ''])); });
         const wb = XLSX.utils.book_new(); wb.Workbook = { Views: [{ RTL: true }] }; XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'المؤتمر'); XLSX.writeFile(wb, `conference_${D.conf.dateFrom}.xlsx`);
       }
     });
