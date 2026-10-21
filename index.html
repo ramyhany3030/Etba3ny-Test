@@ -181,7 +181,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 <header>
   <div class="cross">✝</div>
   <h1>اجتماع شباب «اتبعني»</h1>
-  <p>كاتدرائية مارمينا والبابا كيرلس - العاشر من رمضان</p>
+  <p>كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان</p>
 </header>
 
 <nav id="mainNav">
@@ -660,7 +660,7 @@ const QR = (function () {
    ========================================================= */
 const CARD_W = 1011, CARD_H = 638;
 const CARD_TITLE = 'اجتماع شباب «اتبعني»';
-const CARD_SUB = 'كاتدرائية مارمينا والبابا كيرلس - العاشر من رمضان';
+const CARD_SUB = 'كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان';
 const CARD_FONT = "'Cairo', Tahoma, Arial, sans-serif";
 
 function rrect(g, x, y, w, h, r) {
@@ -1258,7 +1258,7 @@ function refreshDetail() {
   $('#dName').textContent = r.fullName;
   $('#dHead').innerHTML = badge(r.status) + (r.code ? ` <span class="ltr"><b>الكود: ${esc(r.code)}</b></span>` : '') + (r.status === 'مرفوض' && r.rejectReason ? ` <span style="color:var(--bad)">السبب: ${esc(r.rejectReason)}</span>` : '');
   const wa = 'https://wa.me/2' + digits(r.whatsapp) + '?text=' + encodeURIComponent(
-    `أهلًا ${r.fullName.split(' ')[0]}،\nتم قبول تسجيلك في اجتماع شباب «اتبعني» - كاتدرائية مارمينا والبابا كيرلس بالعاشر من رمضان ✝️\nكودك الخاص: ${r.code}\nتقدر تدخل الموقع من «دخول الأعضاء»: اليوزر = كودك، وكلمة المرور = رقم الواتساب.`);
+    `أهلًا ${r.fullName.split(' ')[0]}،\nتم قبول تسجيلك في اجتماع شباب «اتبعني» - كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس بالعاشر من رمضان ✝️\nكودك الخاص: ${r.code}\nتقدر تدخل الموقع من «دخول الأعضاء»: اليوزر = كودك، وكلمة المرور = رقم الواتساب.`);
   $('#dActions').innerHTML = `<button class="btn pri" id="dSave">💾 حفظ التعديلات</button>` +
     (r.status !== 'مقبول' ? `<button class="btn ok" id="dAcc">قبول</button>` : '') + (r.status !== 'مرفوض' ? `<button class="btn bad" id="dRej">رفض</button>` : '') +
     `<button class="btn" id="dDel">🗑 حذف</button>` +
