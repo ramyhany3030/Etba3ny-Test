@@ -1,7 +1,7 @@
 /* =====================================================================
-   conferences.js — موديول المؤتمرات (واجهة العضو + واجهة الأدمن) + الضيوف (حجز لأكتر من شخص)
+   conferences.js — موديول المؤتمرات (واجهة العضو + واجهة الأدمن) + الضيوف (اسم + نوع + تليفون + موافقة الأدمن)
    بيتحمّل بعد portal.js. التابات والحاويات (#memConf / #admConf) موجودة في index.html، والملف ده بيعرّف window.confModule
-   وبيستخدم الدوال الموجودة (pModal / busHTML / BusEditor / askGuest / mcall / adm / ask / toast ...).
+   وبيستخدم الدوال الموجودة (pModal / busHTML / BusEditor / askGuest / askJoinGuests / openGuestsManager / mcall / adm / ask / toast ...).
    ===================================================================== */
 (function () {
   'use strict';
@@ -33,7 +33,6 @@
   .cf-quick{background:var(--tint);border:1px solid var(--line);border-radius:12px;padding:8px;margin:6px 0 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .cf-quick input,.cf-quick select{width:auto;padding:6px 8px}
   .cf-sec{margin:14px 0 4px;color:var(--brown)}
-  .badge.b{background:#dbeafe;color:#1e40af}
   @media(max-width:640px){.cf-rrow{grid-template-columns:1fr 1fr}.cf-rrow button{grid-column:2}.cf-rrow [data-r=name]{grid-column:1/-1}.cf-rrow [data-r=note]{grid-column:1/-1}}
   `;
 
@@ -71,19 +70,20 @@
   const CM = { items: [] };
 
   function memState(c) {
-    const my = c.my || { status: 'none' }, open = c.status === 'open';
+    const my = c.my || { status: 'none' }, open = c.status === 'open', gs = my.guests || [], party = c.maxPeople > 1;
     const cancel = open ? ' <button class="btn sm" data-act="cancel">إلغاء الاشتراك</button>' : '';
-    if (my.status === 'requested') return `<span class="badge p">طلبك قيد المراجعة من الإدارة</span>${open ? ' <button class="btn sm" data-act="cancel">إلغاء الطلب</button>' : ''}`;
+    const gbtn = party && (my.status === 'requested' || my.status === 'accepted') ? ` <button class="btn sm" data-act="guests">👥 ضيوفي${gs.length ? ' (' + gs.length + ')' : ''}</button>` : '';
+    const gsum = gs.length ? `<div style="margin-top:6px">${guestsSummary(gs)}</div>` : '';
+    if (my.status === 'requested') return `<span class="badge p">طلبك قيد المراجعة من الإدارة</span>${gbtn}${open ? ' <button class="btn sm" data-act="cancel">إلغاء الطلب</button>' : ''}${gsum}`;
     if (my.status === 'accepted' && my.needsCode) return `<div class="notice good">تم قبول اشتراكك ✔ الإدارة هتبعتلك <b>كود المؤتمر</b> (4 أرقام وحروف). اكتبه هنا عشان تفتح اختيار المقعد والسرير.</div>
-      <div class="row"><input class="tcode" maxlength="4" placeholder="XXXX" data-tc autocomplete="off" autocapitalize="characters"><button class="btn pri" data-act="verify">فتح</button>${cancel}</div>`;
+      <div class="row"><input class="tcode" maxlength="4" placeholder="XXXX" data-tc autocomplete="off" autocapitalize="characters"><button class="btn pri" data-act="verify">فتح</button>${gbtn}${cancel}</div>${gsum}`;
     if (my.status === 'accepted') {
-      const gs = my.guests || [], bits = [];
+      const bits = [];
       if (c.useBus) bits.push(my.seat ? `🚌 مقعد <b>${my.seat}</b>` : '🚌 لسه ما اخترتش مقعد');
       if (c.bedsTotal) bits.push(my.bed ? `🛏️ ${esc(my.roomName || 'غرفة')} · سرير <b>${my.bed}</b>` : '🛏️ لسه ما اخترتش سرير');
-      const gseat = gs.filter(g => g.seat).length, gbed = gs.filter(g => g.bed).length, left = c.maxPeople - 1 - gs.length;
-      const gsum = gs.length ? ` <span class="badge b">ضيوف: ${gs.length}${c.useBus ? ' · ' + gseat + ' بمقعد' : ''}${c.bedsTotal ? ' · ' + gbed + ' بسرير' : ''}</span>` : '';
-      return `<div class="cf-mine">${bits.join(' &nbsp;·&nbsp; ') || 'تم قبولك'}</div>${gsum}<div class="row" style="margin-top:8px">
-        <button class="btn gold" data-act="open">${open ? ((my.seat || my.bed || gseat || gbed) ? '✎ تعديل حجزي' : '🏨 اختيار المقعد والسرير') : '👁 عرض حجزي'}</button>${cancel}</div>${open && left > 0 ? `<small class="hint">تقدر تضيف لحد ${left} ${left === 1 ? 'ضيف' : 'ضيوف'} وتحجز لهم من نافذة الحجز.</small>` : ''}`;
+      const gseat = gs.filter(g => g.seat).length, gbed = gs.filter(g => g.bed).length;
+      return `<div class="cf-mine">${bits.join(' &nbsp;·&nbsp; ') || 'تم قبولك'}</div><div class="row" style="margin-top:8px">
+        <button class="btn gold" data-act="open">${open ? ((my.seat || my.bed || gseat || gbed) ? '✎ تعديل حجزي' : '🏨 اختيار المقعد والسرير') : '👁 عرض حجزي'}</button>${gbtn}${cancel}</div>${gsum}`;
     }
     if (my.status === 'rejected') return `<div class="notice bad">تم رفض طلب الاشتراك${my.reason ? ': ' + esc(my.reason) : ''}</div>${open ? '<button class="btn pri" data-act="join">إعادة الطلب</button>' : ''}`;
     return open ? `${my.status === 'cancelled' ? '<span class="badge g">ألغيت اشتراكك</span> ' : ''}<button class="btn pri" data-act="join">🙋 طلب الاشتراك في المؤتمر</button>` : '<span class="badge g">التسجيل مغلق</span>';
@@ -91,7 +91,7 @@
   function memCard(c) {
     return `<div class="trip${c.past ? ' past' : ''}" data-id="${esc(c.id)}">
       <div class="row" style="justify-content:space-between"><h4>🏨 ${esc(c.title)}</h4>${c.status === 'closed' ? '<span class="badge g">الحجز مغلق</span>' : '<span class="badge o">الحجز مفتوح</span>'}</div>
-      <div class="tmeta"><span>📍 ${esc(c.destination)}</span><span>📅 ${esc(range(c))}</span><span>⏱ ${esc(spanText(c.days, c.nights))}</span>${c.price ? `<span>💰 ${esc(c.price)}</span>` : ''}${c.maxPeople > 1 ? `<span>👥 تقدر تحجز لحد ${c.maxPeople} أشخاص</span>` : ''}</div>
+      <div class="tmeta"><span>📍 ${esc(c.destination)}</span><span>📅 ${esc(range(c))}</span><span>⏱ ${esc(spanText(c.days, c.nights))}</span>${c.price ? `<span>💰 ${esc(c.price)}</span>` : ''}${c.maxPeople > 1 ? `<span>👥 تقدر تحجز لحد ${c.maxPeople} أشخاص (بموافقة الإدارة على الضيوف)</span>` : ''}</div>
       ${c.details ? `<div style="margin:0 0 6px;white-space:pre-wrap;word-break:break-word">${esc(c.details)}</div>` : ''}
       <div class="tmeta">${c.useBus ? `<span>🚌 الأتوبيس: ${c.seatsTaken}/${c.seatsTotal}</span>` : ''}${c.bedsTotal ? `<span>🛏️ الأسرّة: ${c.bedsTaken}/${c.bedsTotal} (${c.roomsCount} غرفة)</span>` : ''}</div>
       <div class="tstate">${memState(c)}</div></div>`;
@@ -112,10 +112,18 @@
     const btn = e.target.closest('[data-act]'); if (!btn) return;
     const card = btn.closest('.trip'), id = card.dataset.id, act = btn.dataset.act, c = CM.items.find(x => x.id === id);
     if (act === 'open') return openSelect(id);
+    if (act === 'guests') return openConfGuests(id);
     btn.disabled = true;
     try {
-      if (act === 'join') { const r = await mcall('confJoin', { confId: id }); toast(r.ok ? 'تم إرسال طلب الاشتراك ✔' : r.error, r.ok ? 'ok' : 'err'); }
-      else if (act === 'cancel') {
+      if (act === 'join') {
+        let guests;
+        if (c && c.maxPeople > 1) {                                                   // المؤتمر بيسمح بضيوف: لازم يحدد الأول
+          guests = await askJoinGuests({ title: 'طلب الاشتراك في «' + c.title + '»', what: 'المؤتمر', max: c.maxPeople, withGender: true });
+          if (!guests) return;
+        }
+        const r = await mcall('confJoin', guests ? { confId: id, guests } : { confId: id });
+        toast(r.ok ? (guests && guests.length ? 'تم إرسال الطلب ✔ والضيوف بانتظار موافقة الإدارة' : 'تم إرسال طلب الاشتراك ✔') : r.error, r.ok ? 'ok' : 'err');
+      } else if (act === 'cancel') {
         if (!await ask({ title: 'إلغاء الاشتراك', msg: `إلغاء اشتراكك في «${c ? c.title : 'المؤتمر'}»؟ مقاعدك وأسرّتك ومقاعد وأسرّة ضيوفك (لو فيه) هيتحرروا.`, okText: 'إلغاء الاشتراك' })) return;
         const r = await mcall('confCancel', { confId: id }); toast(r.ok ? 'تم الإلغاء' : r.error, r.ok ? 'ok' : 'err');
       } else if (act === 'verify') {
@@ -128,14 +136,23 @@
       await loadMember();
     } finally { btn.disabled = false; }
   }
+  function openConfGuests(confId) {
+    openGuestsManager({
+      title: '👥 ضيوفي في المؤتمر', withGender: true,
+      fetchMy: async () => { const r = await mcall('confList'); if (!r.ok) return r; const c = r.items.find(x => x.id === confId); return c ? { ok: true, my: c.my, maxPeople: c.maxPeople, open: c.status === 'open' } : { ok: false, error: 'المؤتمر غير متاح.' }; },
+      add: g => mcall('confGuestAdd', { confId, name: g.name, phone: g.phone, gender: g.gender }),
+      remove: id => mcall('confGuestRemove', { confId, guestId: id }),
+      onClose: () => { const b = $('#memConf'); if (b && !b.hidden) loadMember(); }
+    });
+  }
 
-  // نافذة اختيار المقعد والسرير (ليك ولضيوفك): بتتحدّث كل 15 ثانية، والخادم هو اللي بيقرر لو اتنين اختاروا نفس المكان
+  // نافذة اختيار المقعد والسرير (ليك ولضيوفك الموافق عليهم): بتتحدّث كل 15 ثانية، والخادم هو اللي بيقرر لو اتنين اختاروا نفس المكان
   async function openSelect(confId) {
-    let v = '', st = null, tab = '', who = 'me', selSeat = 0, selBed = null, busy = false, timer = null, dirty = false, gname = '', ggender = '';
+    let v = '', st = null, tab = '', who = 'me', selSeat = 0, selBed = null, busy = false, timer = null, dirty = false; const draft = {};
     const m = pModal('اختيار المقعد والسرير', pSpin, '', { tag: 'member', onClose: () => { clearInterval(timer); const b = $('#memConf'); if (dirty && b && !b.hidden) loadMember(); } });
-    const body = m.q('.bd');
-    const persons = () => [{ id: 'me', name: 'أنا', seat: st.my.seat || 0, roomId: st.my.roomId || '', bed: st.my.bed || 0, gender: st.myGender }]
-      .concat((st.my.guests || []).map(g => ({ id: g.id, name: g.name, seat: g.seat || 0, roomId: g.roomId || '', bed: g.bed || 0, gender: g.gender, guest: true })));
+    const body = m.q('.bd'); bindDraft(body, draft);
+    const persons = () => [{ id: 'me', name: 'أنا', seat: st.my.seat || 0, roomId: st.my.roomId || '', bed: st.my.bed || 0, gender: st.myGender, st: 'a' }]
+      .concat((st.my.guests || []).map(g => ({ id: g.id, name: g.name, seat: g.seat || 0, roomId: g.roomId || '', bed: g.bed || 0, gender: g.gender, st: gstOf(g), guest: true })));
     const rName = id => { const r = (st.rooms || []).find(x => x.id === id); return r ? r.name : ''; };
 
     const roomHTML = (r, cur) => {
@@ -158,35 +175,32 @@
       if (!my.unlocked) { body.innerHTML = '<div class="empty">لازم اشتراكك يتقبل وتدخل كود المؤتمر الأول.</div>'; return; }
       const hasBus = !!(c.useBus && st.layout), hasRooms = !!(st.rooms && st.rooms.length);
       if (!hasBus && !hasRooms) { body.innerHTML = '<div class="empty">الأدمن لسه ما حددش أتوبيس ولا غرف للمؤتمر ده.</div>'; return; }
-      const ps = persons(); if (!ps.some(p => p.id === who)) who = 'me';
-      const cur = ps.find(p => p.id === who), canAdd = open && c.maxPeople > ps.length, party = ps.length > 1 || c.maxPeople > 1;
+      const ps = persons(); if (!ps.some(p => p.id === who && p.st === 'a')) who = 'me';
+      const cur = ps.find(p => p.id === who), live = ps.filter(p => p.st !== 'r').length, canAdd = open && c.maxPeople > live, party = ps.length > 1 || c.maxPeople > 1, pending = ps.filter(p => p.st === 'p').length;
       if (!tab || (tab === 'bus' && !hasBus) || (tab === 'rooms' && !hasRooms)) tab = hasBus ? 'bus' : 'rooms';
-      const place = p => [hasBus ? (p.seat ? 'مقعد ' + p.seat : 'بدون مقعد') : '', hasRooms ? (p.bed ? rName(p.roomId) + '/' + p.bed : 'بدون سرير') : ''].filter(Boolean).join(' · ');
-      const chips = ps.map(p => `<div class="pc"><button type="button" class="pchip${p.id === who ? ' on' : ''}" data-who="${esc(p.id)}"><b>${esc(p.guest ? shortName(p.name) : 'أنا')}</b><small>${esc(place(p))}</small></button>${p.guest && open ? `<button type="button" class="gx" data-rg="${esc(p.id)}" title="حذف الضيف">×</button>` : ''}</div>`).join('');
-      const add = canAdd ? `<div class="gform"><input data-gname data-t="name" maxlength="60" placeholder="اسم الضيف (ثنائي على الأقل)" autocomplete="off"><select data-ggender style="width:auto"><option value="">النوع</option><option>ذكر</option><option>أنثى</option></select><button type="button" class="btn sm pri" data-addg>➕ إضافة ضيف</button></div>` : '';
+      const place = p => p.st === 'p' ? '⏳ بانتظار الموافقة' : p.st === 'r' ? '✖ مرفوض' : [hasBus ? (p.seat ? 'مقعد ' + p.seat : 'بدون مقعد') : '', hasRooms ? (p.bed ? rName(p.roomId) + '/' + p.bed : 'بدون سرير') : ''].filter(Boolean).join(' · ');
+      const chips = ps.map(p => `<div class="pc"><button type="button" class="pchip${p.id === who ? ' on' : ''}${p.st === 'p' ? ' lock' : ''}${p.st === 'r' ? ' rej' : ''}" data-who="${esc(p.id)}"><b>${esc(p.guest ? shortName(p.name) : 'أنا')}</b><small>${esc(place(p))}</small></button>${p.guest && open ? `<button type="button" class="gx" data-rg="${esc(p.id)}" title="حذف الضيف">×</button>` : ''}</div>`).join('');
+      const add = canAdd ? `<div class="gform" data-addform>${guestFieldsHTML(true)}<button type="button" class="btn sm pri" data-addg>➕ إضافة ضيف</button></div>` : '';
       const head = `<div style="text-align:center"><b>${esc(c.title)}</b><div class="hint">${esc(range(c))} · ${esc(spanText(c.days, c.nights))} · 📍 ${esc(c.destination)}</div>
-        ${party ? `<div class="party">${chips}</div><div class="hint">الأشخاص: ${ps.length} من ${c.maxPeople} (بما فيهم حضرتك)${canAdd ? ' — اكتب اسم ونوع كل ضيف وبعدين احجز له.' : ''}</div>${add}`
+        ${party ? `<div class="party">${chips}</div><div class="hint">الأشخاص: ${live} من ${c.maxPeople} (بما فيهم حضرتك)${canAdd ? ' — الضيف الجديد بيحتاج موافقة الإدارة قبل ما يتحجز له مقعد وسرير.' : ''}</div>${pending ? `<div class="notice warn" style="margin:6px 0">⏳ ${pending} ضيف بانتظار موافقة الإدارة — هتقدر تحجز له أول ما يتوافق عليه.</div>` : ''}${add}`
           : `<div class="cf-mine">${hasBus ? '🚌 مقعدك: ' + (my.seat ? '<b>' + my.seat + '</b>' : '—') : ''}${hasBus && hasRooms ? ' &nbsp;·&nbsp; ' : ''}${hasRooms ? '🛏️ سريرك: ' + (my.bed ? '<b>' + esc(rName(my.roomId)) + ' / ' + my.bed + '</b>' : '—') : ''}</div>`}</div>`;
       const tabs = hasBus && hasRooms ? `<div class="subtabs" data-tabs><button data-t="bus" class="${tab === 'bus' ? 'on' : ''}">🚌 الأتوبيس</button><button data-t="rooms" class="${tab === 'rooms' ? 'on' : ''}">🛏️ الغرف (${st.rooms.length})</button></div>` : '';
       const note = open ? '' : '<div class="notice warn" style="margin-top:8px">الحجز مغلق حاليًا. تقدر تشوف حجزك بس.</div>';
-      const who_ = cur.guest ? shortName(cur.name) : 'حضرتك';
+      const who_ = cur.guest ? shortName(cur.name) : 'حضرتك', multi = ps.filter(p => p.st === 'a').length > 1;
       let main = '';
       if (tab === 'bus') {
-        const set = {}, names = {}; ps.forEach(p => { if (p.seat) { set[p.seat] = true; names[p.seat] = p.guest ? p.name : 'أنا'; } });
+        const set = {}, names = {}; ps.forEach(p => { if (p.seat && p.st === 'a') { set[p.seat] = true; names[p.seat] = p.guest ? p.name : 'أنا'; } });
         const act = open ? `<div class="row" style="justify-content:center;margin-top:8px">${selSeat && selSeat !== cur.seat ? `<button class="btn gold" data-do="takeSeat">${cur.seat ? 'نقل مقعد ' + esc(who_) + ' إلى ' : 'احجز المقعد '}${selSeat}${cur.seat ? '' : ' لـ ' + esc(who_)}</button>` : ''}${cur.seat ? `<button class="btn" data-do="relSeat">إلغاء مقعد ${esc(who_)}</button>` : ''}</div>` : '';
-        main = `<div style="text-align:center">${open ? `<div class="hint">${party ? 'اختار الشخص فوق، وبعدين اضغط على مقعد أخضر واضغط «احجز».' : 'اضغط على مقعد أخضر، وبعدين اضغط «احجز».'}</div>` : ''}${BUS_LEGEND}${busHTML(st.layout, { mode: 'pick', occupied: st.occupied, mine: cur.seat, mineSet: set, sel: selSeat, names })}${act}</div>`;
+        main = `<div style="text-align:center">${open ? `<div class="hint">${multi ? 'اختار الشخص فوق، وبعدين اضغط على مقعد أخضر واضغط «احجز».' : 'اضغط على مقعد أخضر، وبعدين اضغط «احجز».'}</div>` : ''}${BUS_LEGEND}${busHTML(st.layout, { mode: 'pick', occupied: st.occupied, mine: cur.seat, mineSet: set, sel: selSeat, names })}${act}</div>`;
       } else {
         const sel = selBed && st.rooms.find(r => r.id === selBed.room);
         const act = open ? `<div class="row" style="justify-content:center;margin:8px 0">${selBed && !(selBed.room === cur.roomId && selBed.bed === cur.bed) ? `<button class="btn gold" data-do="takeBed">${cur.bed ? 'نقل سرير ' : 'احجز '}${esc(who_)} · ${esc(sel ? sel.name : '')} · سرير ${selBed.bed}</button>` : ''}${cur.bed ? `<button class="btn" data-do="relBed">إلغاء سرير ${esc(who_)}</button>` : ''}</div>` : '';
-        main = `${open ? `<div class="hint" style="text-align:center">${party ? 'اختار الشخص فوق، وبعدين اضغط على سرير أخضر واضغط «احجز». ' : 'اضغط على سرير أخضر، وبعدين اضغط «احجز». '}الأسماء ظاهرة عشان تعرف مين حاجز فين.</div>` : ''}
+        main = `${open ? `<div class="hint" style="text-align:center">${multi ? 'اختار الشخص فوق، وبعدين اضغط على سرير أخضر واضغط «احجز». ' : 'اضغط على سرير أخضر، وبعدين اضغط «احجز». '}الأسماء ظاهرة عشان تعرف مين حاجز فين.</div>` : ''}
           <div class="legend"><span><i style="background:#e8f4ec;border-color:#1f7a45"></i>متاح</span><span><i style="background:#e9e3d6;border-color:#cfc4ad"></i>محجوز</span><span><i style="background:#c8a24a;border-color:#96601a"></i>حجزك</span><span><i style="background:#f4efe3;border-color:#cfc4ad"></i>مش لنوع الشخص</span></div>
           ${act}${st.rooms.map(r => roomHTML(r, cur)).join('')}`;
       }
-      const focused = document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-gname]');
       body.innerHTML = head + tabs + note + main;
-      const gi = body.querySelector('[data-gname]'), gg = body.querySelector('[data-ggender]');
-      if (gi) { gi.value = gname; if (focused) { gi.focus(); try { gi.setSelectionRange(gi.value.length, gi.value.length); } catch (e) {} } }
-      if (gg) gg.value = ggender;
+      applyDraft(body, draft);
       m.el.scrollTop = sc;
     };
 
@@ -202,12 +216,15 @@
       draw();
     };
 
-    body.addEventListener('input', e => { if (e.target.matches('[data-gname]')) gname = e.target.value; });
-    body.addEventListener('change', e => { if (e.target.matches('[data-ggender]')) ggender = e.target.value; });
     body.onclick = async e => {
       if (!st) return;
       const tb = e.target.closest('[data-tabs] [data-t]'); if (tb) { tab = tb.dataset.t; return draw(); }
-      const chip = e.target.closest('[data-who]'); if (chip) { who = chip.dataset.who; selSeat = 0; selBed = null; return draw(); }
+      const chip = e.target.closest('[data-who]');
+      if (chip) {
+        const p = persons().find(x => x.id === chip.dataset.who);
+        if (p && p.st !== 'a') return toast(p.st === 'p' ? 'الإدارة لسه ما وافقتش على «' + p.name + '». هتقدر تحجز له بعد الموافقة.' : '«' + p.name + '» الإدارة رفضته، فمينفعش يتحجز له.', 'err');
+        who = chip.dataset.who; selSeat = 0; selBed = null; return draw();
+      }
       const rg = e.target.closest('[data-rg]');
       if (rg) {
         const g = (st.my.guests || []).find(x => x.id === rg.dataset.rg); if (!g || busy) return;
@@ -217,12 +234,11 @@
         return refresh(true);
       }
       if (e.target.closest('[data-addg]')) {
-        const name = (body.querySelector('[data-gname]').value || '').trim().replace(/\s+/g, ' '), gender = body.querySelector('[data-ggender]').value;
-        if (name.split(' ').filter(Boolean).length < 2) return toast('اكتب اسم الضيف ثنائي على الأقل.', 'err');
-        if (!gender) return toast('اختر نوع الضيف (ذكر / أنثى).', 'err');
-        if (busy) return; busy = true; const r = await mcall('confGuestAdd', { confId, name, gender }); busy = false;
+        const g = readGuestFields(body.querySelector('[data-addform]'), true);
+        if (g.error) return toast(g.error, 'err');
+        if (busy) return; busy = true; const r = await mcall('confGuestAdd', { confId, name: g.name, phone: g.phone, gender: g.gender }); busy = false;
         if (!r.ok) return toast(r.error, 'err');
-        gname = ''; ggender = ''; who = r.guest.id; selSeat = 0; selBed = null; dirty = true; toast('تمت إضافة الضيف — اختار له المقعد والسرير', 'ok'); return refresh(true);
+        ['name', 'phone', 'gender'].forEach(k => delete draft[k]); dirty = true; toast('تمت إضافة الضيف — بانتظار موافقة الإدارة', 'ok'); return refresh(true);
       }
       const seat = e.target.closest('.bus .c.S.free');
       if (seat && st.conf.status === 'open') { const n = +seat.dataset.n; selSeat = selSeat === n ? 0 : n; return draw(); }
@@ -261,7 +277,7 @@
       (CA.items.length ? CA.items.map(c => { const s = ST[c.status] || ['', 'g'];
         return `<div class="trip" data-id="${esc(c.id)}"><div class="row" style="justify-content:space-between"><h4>🏨 ${esc(c.title)}</h4><span class="badge ${s[1]}">${s[0]}</span></div>
           <div class="tmeta"><span>📍 ${esc(c.destination)}</span><span>📅 ${esc(range(c))}</span><span>⏱ ${esc(spanText(c.days, c.nights))}</span><span>👥 ${c.maxPeople > 1 ? 'لحد ' + c.maxPeople + ' أشخاص لكل عضو' : 'شخص واحد لكل عضو'}</span></div>
-          <div class="tmeta"><span>🕓 طلبات جديدة: <b>${c.requested}</b></span><span>✔ مقبولين: <b>${c.accepted}</b></span>${c.guestsCount ? `<span>➕ ضيوف: <b>${c.guestsCount}</b></span>` : ''}${c.useBus ? `<span>🚌 ${c.seatsTaken}/${c.seatsTotal}</span>` : ''}${c.bedsTotal ? `<span>🛏️ ${c.bedsTaken}/${c.bedsTotal} (${c.roomsCount} غرفة)</span>` : ''}${c.unplaced ? `<span style="color:var(--warn)">⚠ بدون سكن: <b>${c.unplaced}</b></span>` : ''}</div>
+          <div class="tmeta"><span>🕓 طلبات جديدة: <b>${c.requested}</b></span><span>✔ مقبولين: <b>${c.accepted}</b></span>${c.guestsCount ? `<span>➕ ضيوف: <b>${c.guestsCount}</b></span>` : ''}${c.pendingGuests ? `<span class="badge p">⏳ ضيوف بانتظار موافقتك: ${c.pendingGuests}</span>` : ''}${c.useBus ? `<span>🚌 ${c.seatsTaken}/${c.seatsTotal}</span>` : ''}${c.bedsTotal ? `<span>🛏️ ${c.bedsTaken}/${c.bedsTotal} (${c.roomsCount} غرفة)</span>` : ''}${c.unplaced ? `<span style="color:var(--warn)">⚠ بدون سكن: <b>${c.unplaced}</b></span>` : ''}</div>
           <div class="acts"><button class="btn sm pri" data-c="open">📋 إدارة المؤتمر</button><button class="btn sm" data-c="edit">✎ تعديل</button></div></div>`; }).join('')
         : '<div class="empty">مفيش مؤتمرات. اضغط «مؤتمر جديد».</div>');
   }
@@ -281,7 +297,7 @@
       <div data-e="span"></div>
       <div class="field"><label>تفاصيل المؤتمر</label><textarea data-e="details" rows="4" maxlength="2000" placeholder="البرنامج، المطلوب من المشترك، مواعيد الحركة..."></textarea></div>
       <div class="field"><label>👥 عدد الأشخاص المسموح للعضو الواحد يحجز لهم</label><select data-e="maxPeople">${maxPeopleOptions()}</select>
-        <small class="hint">لو اخترت أكتر من 1: العضو (بعد القبول) يكتب اسم ونوع كل ضيف ويحجز له مقعد وسرير. الحد ده ما يتخطّاش.</small></div>
+        <small class="hint">لو اخترت أكتر من 1: العضو لازم يحدد ضيوفه (اسم + نوع + تليفون) وقت طلب الاشتراك، وأنت بتوافق على كل ضيف قبل ما يقدر يحجز له مقعد وسرير. الحد ده ما يتخطّاش.</small></div>
       <label class="chk"><input type="checkbox" data-e="useCode"> 🔑 الدخول لاختيار المقعد والسرير بكود من 4 خانات (بيتولّد لما تقبل اشتراك الشخص وبتبعته له)</label>
       <h4 class="cf-sec">🚌 الأتوبيس</h4>
       <label class="chk"><input type="checkbox" data-e="useBus"> فيه حجز أتوبيس للمؤتمر ده</label>
@@ -348,14 +364,14 @@
     };
   }
 
-  /* ---------- نافذة إدارة المؤتمر: الطلبات + الضيوف + الأتوبيس + التسكين ---------- */
+  /* ---------- نافذة إدارة المؤتمر: الطلبات + الضيوف (موافقة/رفض) + الأتوبيس + التسكين ---------- */
   async function openManage(id) {
     const m = pModal('إدارة المؤتمر', pSpin, '', { tag: 'admin' });
     const body = m.q('.bd'); let D = null;
     const load = async () => { const r = await adm('confAdminGet', { id }); if (!r.ok) { body.innerHTML = `<div class="formerr">${esc(r.error)}</div>`; return false; } D = r; draw(); return true; };
     const act = async (action, payload, okMsg) => { const r = await adm(action, payload, 60000); if (!r.ok) toast(r.error, 'err'); else if (okMsg) toast(okMsg, 'ok'); await load(); loadAdmin(); };
-    // كل الأشخاص (أعضاء مقبولين + ضيوفهم)
-    const peopleOf = b => [{ who: 'me', name: b.name, gender: b.gender, seat: b.seat, roomId: b.roomId, bed: b.bed, bk: b }].concat(b.guests.map(g => ({ who: g.id, name: g.name, gender: g.gender, seat: g.seat, roomId: g.roomId, bed: g.bed, bk: b, guest: true })));
+    // كل الأشخاص الفعليين (أعضاء مقبولين + ضيوفهم الموافق عليهم)
+    const peopleOf = b => [{ who: 'me', name: b.name, gender: b.gender, seat: b.seat, roomId: b.roomId, bed: b.bed, bk: b }].concat(b.guests.filter(g => gstOf(g) === 'a').map(g => ({ who: g.id, name: g.name, gender: g.gender, seat: g.seat, roomId: g.roomId, bed: g.bed, bk: b, guest: true })));
 
     const pickPerson = (room, bedNo) => {
       const cand = []; D.bookings.forEach(b => { if (b.status === 'accepted') peopleOf(b).forEach(p => { if (!(p.roomId && p.bed)) cand.push(p); }); });
@@ -369,29 +385,38 @@
 
     const draw = () => {
       const c = D.conf, B = D.bookings, rooms = c.rooms || [], L = c.layout, s = ST[c.status] || ['', 'g'];
-      const occSeat = {}, names = {}, bySeat = {}, byBed = {}; let people = 0, placed = 0, unplaced = 0;
-      B.forEach(b => { if (b.status !== 'accepted') return; peopleOf(b).forEach(p => {
-        people++; const label = p.guest ? p.name + ' (ضيف ' + shortName(b.name) + ')' : p.name;
-        if (p.seat) { occSeat[p.seat] = 1; names[p.seat] = label; bySeat[p.seat] = { bid: b.id, who: p.who, name: p.name }; }
-        if (p.roomId && p.bed) { byBed[p.roomId + ':' + p.bed] = { bid: b.id, who: p.who, name: p.name, label }; placed++; } else unplaced++;
-      }); });
+      const occSeat = {}, names = {}, bySeat = {}, byBed = {}; let people = 0, placed = 0, unplaced = 0, pendingAll = 0;
+      B.forEach(b => {
+        if (b.status === 'accepted' || b.status === 'requested') b.guests.forEach(g => { if (gstOf(g) === 'p') pendingAll++; });
+        if (b.status !== 'accepted') return;
+        peopleOf(b).forEach(p => {
+          people++; const label = p.guest ? p.name + ' (ضيف ' + shortName(b.name) + ')' : p.name;
+          if (p.seat) { occSeat[p.seat] = 1; names[p.seat] = label; bySeat[p.seat] = { bid: b.id, who: p.who, name: p.name }; }
+          if (p.roomId && p.bed) { byBed[p.roomId + ':' + p.bed] = { bid: b.id, who: p.who, name: p.name, label }; placed++; } else unplaced++;
+        });
+      });
       const seatOpts = cur => { if (!L) return ''; const o = ['<option value="0">— بدون مقعد —</option>']; L.cells.forEach((row, r) => { for (let k = 0; k < row.length; k++) { const ch = row.charAt(k), n = L.nums[r][k];
         if ((ch === 'S' || ch === 'X') && n) o.push(`<option value="${n}"${n === cur ? ' selected' : ''}${occSeat[n] && n !== cur ? ' disabled' : ''}>مقعد ${n}${ch === 'X' ? ' (غير متاح للأعضاء)' : ''}${occSeat[n] && n !== cur ? ' - ' + esc(shortName(names[n])) : ''}</option>`); } }); return o.join(''); };
       const bedOpts = (cur, gender) => { let o = '<option value="">— بدون سرير —</option>'; rooms.forEach(r => { o += `<optgroup label="${esc(r.name)} (${r.beds} · ${gLabel(r.gender)})">`;
         for (let i = 1; i <= r.beds; i++) { const k = r.id + ':' + i, who = byBed[k], me = cur === k, mis = r.gender && r.gender !== gender ? ' ⚠' : '';
           o += `<option value="${k}"${me ? ' selected' : ''}${who && !me ? ' disabled' : ''}>سرير ${i}${mis}${who && !me ? ' - ' + esc(shortName(who.name)) : ''}</option>`; } o += '</optgroup>'; }); return o; };
       const selects = p => `<td>${c.useBus ? `<select data-seat style="min-width:110px">${seatOpts(p.seat)}</select>` : '—'}</td><td>${rooms.length ? `<select data-bed style="min-width:150px">${bedOpts(p.roomId && p.bed ? p.roomId + ':' + p.bed : '', p.gender)}</select>` : '—'}</td>`;
-      const rows = B.map(b => { const st = BK[b.status] || ['', 'g'];
-        const wa = 'https://wa.me/2' + b.whatsapp + '?text=' + encodeURIComponent(`سلام ونعمة ${b.name.split(' ')[0]} 🙏\nتم قبول اشتراكك في مؤتمر «${c.title}» (${range(c)}) - ${c.destination}.\nكود المؤتمر الخاص بيك: ${b.confCode}\nادخل موقع الأعضاء ← المؤتمرات ← اكتب الكود واختار مقعدك وسريرك${c.maxPeople > 1 ? ' (وتقدر تضيف ضيوف لحد ' + c.maxPeople + ' أشخاص)' : ''}.`);
+      const rows = B.map(b => { const st = BK[b.status] || ['', 'g'], live = b.status === 'requested' || b.status === 'accepted', pend = b.guests.filter(g => gstOf(g) === 'p').length;
+        const wa = 'https://wa.me/2' + b.whatsapp + '?text=' + encodeURIComponent(`سلام ونعمة ${b.name.split(' ')[0]} 🙏\nتم قبول اشتراكك في مؤتمر «${c.title}» (${range(c)}) - ${c.destination}.\nكود المؤتمر الخاص بيك: ${b.confCode}\nادخل موقع الأعضاء ← المؤتمرات ← اكتب الكود واختار مقعدك وسريرك${c.maxPeople > 1 ? ' (وتقدر تحجز لضيوفك اللي اتوافق عليهم)' : ''}.`);
+        const canAddG = c.maxPeople > 1 && guestsLive(b.guests).length + 1 < c.maxPeople;
         let a = '';
-        if (b.status === 'requested') a = `<button class="btn sm ok" data-d="accept">✔ قبول</button><button class="btn sm bad" data-d="reject">✖ رفض</button>`;
-        else if (b.status === 'accepted') a = `${b.confCode ? `<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${wa}">📲 إرسال الكود</a>` : ''}${c.maxPeople > 1 && b.guests.length + 1 < c.maxPeople ? '<button class="btn sm" data-d="addg">➕ ضيف</button>' : ''}<button class="btn sm" data-d="cancel">إلغاء</button>`;
+        if (b.status === 'requested') a = `<button class="btn sm ok" data-d="accept">✔ قبول</button>${pend ? '<button class="btn sm ok" data-d="acceptg">✔ قبول مع الضيوف</button>' : ''}<button class="btn sm bad" data-d="reject">✖ رفض</button>${canAddG ? '<button class="btn sm" data-d="addg">➕ ضيف</button>' : ''}`;
+        else if (b.status === 'accepted') a = `${b.confCode ? `<a class="btn sm wa" style="text-decoration:none" target="_blank" rel="noopener" href="${wa}">📲 إرسال الكود</a>` : ''}${canAddG ? '<button class="btn sm" data-d="addg">➕ ضيف</button>' : ''}<button class="btn sm" data-d="cancel">إلغاء</button>`;
         else a = `<button class="btn sm ok" data-d="accept">✔ قبول</button>`;
-        const main = `<tr data-b="${esc(b.id)}"><td><b>${esc(b.name)}</b> <span class="badge ${b.gender === 'أنثى' ? 's' : 'g'}">${b.gender === 'أنثى' ? 'أنثى' : 'ذكر'}</span><br><small class="ltr" style="display:inline-block">${esc(b.code)} · ${esc(b.whatsapp)}</small>${b.note ? `<br><small style="color:var(--bad)">${esc(b.note)}</small>` : ''}</td>
+        const main = `<tr data-b="${esc(b.id)}"><td><b>${esc(b.name)}</b> <span class="badge ${b.gender === 'أنثى' ? 's' : 'g'}">${b.gender === 'أنثى' ? 'أنثى' : 'ذكر'}</span><br><small class="ltr" style="display:inline-block">${esc(b.code)} · ${esc(b.whatsapp)}</small>${b.note ? `<br><small style="color:var(--bad)">${esc(b.note)}</small>` : ''}${pend ? `<br><span class="badge p">⏳ ${pend} ضيف بانتظار موافقتك</span>` : ''}</td>
           <td><span class="badge ${st[1]}">${st[0]}</span>${b.status === 'accepted' && c.useCode ? `<br><b class="ltr" style="display:inline-block;letter-spacing:2px">${esc(b.confCode)}</b><br><small>${b.verified ? '✔ دخل بالكود' : 'لسه ما دخلش'}</small>` : ''}</td>
           ${b.status === 'accepted' ? selects({ seat: b.seat, roomId: b.roomId, bed: b.bed, gender: b.gender }) : '<td>—</td><td>—</td>'}<td><div class="acts">${a}</div></td></tr>`;
-        const gr = b.status === 'accepted' ? b.guests.map(g => `<tr class="grow" data-b="${esc(b.id)}" data-g="${esc(g.id)}"><td>↳ <b>${esc(g.name)}</b> <span class="badge ${g.gender === 'أنثى' ? 's' : 'g'}">${g.gender === 'أنثى' ? 'أنثى' : 'ذكر'}</span><br><small style="color:var(--mut)">ضيف ${esc(shortName(b.name))}</small></td><td><span class="badge b">ضيف</span></td>
-          ${selects(g)}<td><button class="btn sm bad" data-d="rg">🗑 حذف الضيف</button></td></tr>`).join('') : '';
+        const gr = live ? b.guests.map(g => { const gs = gstOf(g), sel = gs === 'a' && b.status === 'accepted';
+          const ga = gs === 'p' ? '<button class="btn sm ok" data-d="gok">✔ موافقة</button><button class="btn sm bad" data-d="grej">✖ رفض</button>'
+            : gs === 'a' ? '<button class="btn sm" data-d="grej">✖ رفض</button><button class="btn sm bad" data-d="rg">🗑</button>'
+            : '<button class="btn sm ok" data-d="gok">✔ موافقة</button><button class="btn sm bad" data-d="rg">🗑</button>';
+          return `<tr class="grow${gs === 'p' ? ' pend' : ''}" data-b="${esc(b.id)}" data-g="${esc(g.id)}"><td>↳ <b>${esc(g.name)}</b> <span class="badge ${g.gender === 'أنثى' ? 's' : 'g'}">${g.gender === 'أنثى' ? 'أنثى' : 'ذكر'}</span><br><small class="ltr" style="display:inline-block">📞 ${esc(g.phone || '—')}</small><br><small style="color:var(--mut)">ضيف ${esc(shortName(b.name))}</small>${gs === 'r' && g.note ? `<br><small style="color:var(--bad)">${esc(g.note)}</small>` : ''}</td><td>${gstBadge(g)}</td>
+            ${sel ? selects(g) : '<td>—</td><td>—</td>'}<td><div class="acts">${ga}</div></td></tr>`; }).join('') : '';
         return main + gr; }).join('');
       const roomsBoard = rooms.map(r => { const beds = []; let taken = 0;
         for (let i = 1; i <= r.beds; i++) { const w = byBed[r.id + ':' + i]; if (w) taken++;
@@ -400,9 +425,10 @@
       body.innerHTML = `<div class="row" style="justify-content:space-between"><div><b>${esc(c.title)}</b> <span class="badge ${s[1]}">${s[0]}</span>
         <div class="hint">📍 ${esc(c.destination)} · ${esc(range(c))} · ⏱ ${esc(spanText(c.days, c.nights))}${c.price ? ' · 💰 ' + esc(c.price) : ''} · الأشخاص: ${people}${c.maxPeople > 1 ? ' · الحد لكل عضو: ' + c.maxPeople : ''}</div></div>
         <div class="acts"><button class="btn sm" data-t2="edit">✎ تعديل المؤتمر</button><button class="btn sm" data-t2="xls">⬇ Excel</button><button class="btn sm bad" data-t2="del">🗑 حذف المؤتمر</button></div></div>
+        ${pendingAll ? `<div class="notice warn" style="margin-top:8px">⏳ فيه <b>${pendingAll}</b> ضيف بانتظار موافقتك (الصفوف المظلّلة في الجدول). الضيف ما يقدرش يتحجز له مقعد أو سرير غير بعد موافقتك.</div>` : ''}
         ${c.useBus && L ? `<h4 class="cf-sec">🚌 خريطة الأتوبيس <small class="hint" style="display:inline">(اضغط على مقعد محجوز لتحريره) · ${Object.keys(occSeat).length}/${c.seatsTotal}</small></h4><div style="text-align:center">${BUS_LEGEND}${busHTML(L, { mode: 'admin', occupied: occSeat, names })}</div>` : ''}
         ${rooms.length ? `<h4 class="cf-sec">🛏️ التسكين <small class="hint" style="display:inline">(${placed}/${c.bedsTotal} سرير مشغول${unplaced ? ' · <b style="color:var(--warn)">' + unplaced + ' شخص من غير سرير</b>' : ''})</small></h4>
-          <div class="hint">اضغط على سرير فاضي لتسكين شخص (عضو أو ضيف)، أو على سرير مشغول لتحريره.</div>${roomsBoard}` : ''}
+          <div class="hint">اضغط على سرير فاضي لتسكين شخص (عضو أو ضيف موافق عليه)، أو على سرير مشغول لتحريره.</div>${roomsBoard}` : ''}
         <h4 class="cf-sec">👥 المشتركين والطلبات (${B.length})</h4>
         <div class="row" style="margin-bottom:8px"><input data-addcode inputmode="numeric" maxlength="7" dir="ltr" placeholder="كود العضو (7 أرقام) لإضافته مباشرة" style="flex:1;min-width:200px"><button class="btn sm ok" data-t2="add">➕ إضافة عضو</button></div>
         <div class="tbl-wrap" style="max-height:50vh"><table class="tblB"><thead><tr><th>العضو / الضيف</th><th>الحالة / الكود</th><th>المقعد</th><th>السرير</th><th>إجراءات</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="empty">مفيش طلبات لسه</td></tr>'}</tbody></table></div>`;
@@ -426,12 +452,15 @@
       }
       const d = ev.target.closest('[data-d]');
       if (d) {
-        const tr = d.closest('tr'), bid = tr.dataset.b, kind = d.dataset.d;
-        if (kind === 'addg') { const g = await askGuest(true); if (!g) return; return act('confAdminGuestAdd', { id: bid, name: g.name, gender: g.gender }, 'تمت إضافة الضيف'); }
-        if (kind === 'rg') { if (!await ask({ title: 'حذف ضيف', msg: 'حذف الضيف وتحرير مقعده وسريره؟', okText: 'حذف' })) return; return act('confAdminGuestRemove', { id: bid, guestId: tr.dataset.g }, 'تم حذف الضيف'); }
+        const tr = d.closest('tr'), bid = tr.dataset.b, kind = d.dataset.d, gid = tr.dataset.g;
+        if (kind === 'addg') { const g = await askGuest(true); if (!g) return; return act('confAdminGuestAdd', { id: bid, name: g.name, phone: g.phone, gender: g.gender }, 'تمت إضافة الضيف (موافق عليه)'); }
+        if (kind === 'gok') return act('confAdminGuestDecide', { id: bid, guestId: gid, decision: 'approve' }, 'تمت الموافقة على الضيف');
+        if (kind === 'grej') { const reason = await ask({ title: 'رفض الضيف', msg: 'سبب الرفض (هيظهر للعضو):', input: true, okText: 'رفض' }); if (!reason) return; return act('confAdminGuestDecide', { id: bid, guestId: gid, decision: 'reject', reason }, 'تم رفض الضيف'); }
+        if (kind === 'rg') { if (!await ask({ title: 'حذف ضيف', msg: 'حذف الضيف وتحرير مقعده وسريره؟', okText: 'حذف' })) return; return act('confAdminGuestRemove', { id: bid, guestId: gid }, 'تم حذف الضيف'); }
+        if (kind === 'acceptg') return act('confDecide', { id: bid, decision: 'accept', approveGuests: true }, 'تم القبول مع الضيوف — ابعت له الكود');
         if (kind === 'reject') { const reason = await ask({ title: 'رفض الاشتراك', msg: 'سبب الرفض (هيظهر للعضو):', input: true, okText: 'رفض' }); if (!reason) return; return act('confDecide', { id: bid, decision: 'reject', reason }, 'تم الرفض'); }
         if (kind === 'cancel' && !await ask({ title: 'إلغاء الاشتراك', msg: 'إلغاء اشتراك الشخص وتحرير مقاعده وأسرّته (هو وضيوفه)؟', okText: 'إلغاء الاشتراك' })) return;
-        return act('confDecide', { id: bid, decision: kind }, kind === 'accept' ? 'تم القبول — ابعت له الكود' : 'تم');
+        return act('confDecide', { id: bid, decision: kind }, kind === 'accept' ? 'تم القبول — ابعت له الكود (الضيوف لسه بانتظار موافقتك)' : 'تم');
       }
       const x = ev.target.closest('[data-t2]'); if (!x) return;
       const t2 = x.dataset.t2;
@@ -441,10 +470,10 @@
       if (t2 === 'xls') {
         if (!window.XLSX) return toast('مكتبة Excel لم تُحمّل', 'err');
         const roomName = {}; (D.conf.rooms || []).forEach(r => { roomName[r.id] = r.name; });
-        const aoa = [['الاسم', 'النوع', 'عضو/ضيف', 'صاحب الحجز', 'كود العضو', 'الواتساب', 'الحالة', 'كود المؤتمر', 'المقعد', 'الغرفة', 'السرير']];
+        const aoa = [['الاسم', 'النوع', 'عضو/ضيف', 'صاحب الحجز', 'كود العضو', 'الواتساب / تليفون الضيف', 'حالة الحجز', 'موافقة الضيف', 'كود المؤتمر', 'المقعد', 'الغرفة', 'السرير']];
         D.bookings.forEach(b => { const stl = (BK[b.status] || [''])[0];
-          aoa.push([b.name, b.gender, 'عضو', '', b.code, b.whatsapp, stl, b.confCode || '', b.seat || '', roomName[b.roomId] || '', b.bed || '']);
-          b.guests.forEach(g => aoa.push([g.name, g.gender, 'ضيف', b.name, '', b.whatsapp, stl, '', g.seat || '', roomName[g.roomId] || '', g.bed || ''])); });
+          aoa.push([b.name, b.gender, 'عضو', '', b.code, b.whatsapp, stl, '', b.confCode || '', b.seat || '', roomName[b.roomId] || '', b.bed || '']);
+          b.guests.forEach(g => aoa.push([g.name, g.gender, 'ضيف', b.name, '', g.phone || '', stl, (GST[gstOf(g)] || [''])[0], '', g.seat || '', roomName[g.roomId] || '', g.bed || ''])); });
         const wb = XLSX.utils.book_new(); wb.Workbook = { Views: [{ RTL: true }] }; XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'المؤتمر'); XLSX.writeFile(wb, `conference_${D.conf.dateFrom}.xlsx`);
       }
     });
