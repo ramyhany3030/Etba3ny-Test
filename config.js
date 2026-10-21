@@ -3,7 +3,7 @@
 // الرابط بيفضل ثابت لو حدّثت الكود بـ: Deploy > Manage deployments > ✏️ > Version: New version > Deploy
 // (وليس Deploy > New deployment اللي بيطلّع رابط جديد كل مرة).
 window.APP_CONFIG = {
-  API_URL: 'PASTE_YOUR_WEB_APP_EXEC_URL_HERE'
+  API_URL: 'https://script.google.com/macros/s/AKfycbxw0EJx2ZA_AyQw_TNW-se_24Dv5HHQM493efIdZ76jKneo4oqL82UF5BXPx_dLX4o3/exec'
 
   // ---- اختياري: الشعار ----
   // الموقع بيدوّر على الشعار بالترتيب ده: LOGO_URL (لو كتبته) ← ملف logo.png جنب index.html ← صورة Drive الجاهزة.
