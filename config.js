@@ -3,7 +3,7 @@
 // الرابط بيفضل ثابت لو حدّثت الكود بـ: Deploy > Manage deployments > ✏️ > Version: New version > Deploy
 // (وليس Deploy > New deployment اللي بيطلّع رابط جديد كل مرة).
 window.APP_CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzH16pn6MkhU3YYJh7-jEamNgWUUBvTrY6k6kb3ySDZbotjy0-Q0TdOYTFKxUQ65O0y/exec'
+  API_URL: 'PASTE_YOUR_WEB_APP_EXEC_URL_HERE'
 
   // ---- اختياري: الشعار ----
   // الموقع بيدوّر على الشعار بالترتيب ده: LOGO_URL (لو كتبته) ← ملف logo.png جنب index.html ← صورة Drive الجاهزة.
@@ -11,6 +11,6 @@ window.APP_CONFIG = {
   // , LOGO_URL: 'logo.png'
   // , LOGO_DRIVE_ID: '1uRKg8J3YMz16hdAVGBGCWUV3c-S0CF3g'   // لازم الملف يكون مشارك: Anyone with the link
 
-  // ---- اختياري: ألوان الموقع (لو عايزها تطابق ألوان الشعار) ----
-  // , COLORS: { navy: '#17325c', navy2: '#2a5298', gold: '#c9a24d' }
+  // ---- اختياري: ألوان الموقع (الافتراضي مأخوذ من الشعار) ----
+  // , COLORS: { brown: '#3c2412', brown2: '#6b4426', gold: '#c38622', goldDark: '#96601a', gold2: '#e6c37a' }
 };
