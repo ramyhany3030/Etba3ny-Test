@@ -4,76 +4,154 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>اجتماع شباب اتبعني</title>
+<meta name="theme-color" content="#17325c">
+<title>اجتماع شباب «اتبعني» - كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان</title>
+<link rel="icon" id="favicon" href="data:,">
+<link rel="preload" as="image" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<!-- شاشة البداية (Splash): بتتحمّل الأول قبل أي ستايل تاني -->
+<style id="splashCss">
+body.lock{overflow:hidden}
+#splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;
+  background:radial-gradient(circle at 50% 32%,#2f5ba8 0%,#17325c 58%,#0d1f3d 100%);font-family:'Cairo',Tahoma,Arial,sans-serif;transition:opacity .7s ease,visibility .7s}
+#splash.hide{opacity:0;visibility:hidden}
+#splash::before{content:"";position:absolute;inset:0;opacity:.5;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cpath d='M36 14v44M22 30h28' stroke='%23ffffff' stroke-opacity='.07' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E")}
+.sp-in{position:relative;padding:24px;max-width:440px}
+.sp-logo{width:156px;height:156px;margin:0 auto 20px;border-radius:50%;background:#fff;border:5px solid #c9a24d;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  box-shadow:0 12px 44px rgba(0,0,0,.4),0 0 0 10px rgba(201,162,77,.18);animation:spPop .9s cubic-bezier(.2,.9,.3,1.2) both,spGlow 2.6s ease-in-out .9s infinite}
+.sp-title{font-size:25px;font-weight:800;line-height:1.5;margin:0 0 4px}
+.sp-sub{font-size:14px;line-height:1.8;color:#f1e2b0;margin:0 auto;max-width:360px;text-wrap:balance}
+.sp-bar{width:150px;height:4px;border-radius:99px;background:rgba(255,255,255,.18);margin:22px auto 0;overflow:hidden}
+.sp-bar i{display:block;height:100%;width:45%;border-radius:99px;background:linear-gradient(90deg,#c9a24d,#f1e2b0);animation:spBar 1.3s ease-in-out infinite}
+@keyframes spPop{0%{transform:scale(.55);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes spGlow{0%,100%{box-shadow:0 12px 44px rgba(0,0,0,.4),0 0 0 10px rgba(201,162,77,.18)}50%{box-shadow:0 12px 44px rgba(0,0,0,.4),0 0 0 20px rgba(201,162,77,.05)}}
+@keyframes spBar{0%{transform:translateX(150%)}100%{transform:translateX(-250%)}}
+/* الشعار: صورة، ولو مش متاحة بيظهر الصليب بدالها */
+.logo-box img{display:block;width:84%;height:84%;object-fit:contain}
+.logo-box img:not([src]){visibility:hidden}
+.logo-fb{display:none;color:#c9a24d;line-height:1;font-size:56px}
+.nologo .logo-box img{display:none}
+.nologo .logo-fb{display:block}
+@media (prefers-reduced-motion:reduce){.sp-logo,.sp-bar i{animation:none}#splash{transition:none}}
+</style>
+
 <script src="config.js"></script>
+<!-- محمّل الشعار: بيجرّب المصادر بالترتيب لحد ما واحد يشتغل: LOGO_URL (من config.js) ← logo.png (جنب index.html) ← Drive -->
+<script>
+(function () {
+  var cfg = window.APP_CONFIG || {}, ID = cfg.LOGO_DRIVE_ID || '1uRKg8J3YMz16hdAVGBGCWUV3c-S0CF3g';
+  var L = window.LOGO = { ready: false, failed: false, settled: false, src: '', list: [] };
+  if (cfg.LOGO_URL) L.list.push(cfg.LOGO_URL);
+  L.list.push('logo.png');
+  L.list.push('https://drive.google.com/thumbnail?id=' + ID + '&sz=w800');
+  L.apply = function () {
+    var im = document.querySelectorAll('img[data-logo]');
+    for (var i = 0; i < im.length; i++) if (L.src && im[i].getAttribute('src') !== L.src) im[i].setAttribute('src', L.src);
+    var ic = document.getElementById('favicon'); if (ic && L.ready) ic.setAttribute('href', L.src);
+    document.documentElement.classList.toggle('nologo', L.failed);
+  };
+  function settle() { L.settled = true; L.apply(); try { window.dispatchEvent(new Event('logosettled')); } catch (e) {} }
+  var i = 0;
+  (function next() {
+    if (i >= L.list.length) { L.failed = true; settle(); return; }
+    var url = L.list[i++], img = new Image();
+    img.onload = function () { if (img.naturalWidth > 1) { L.ready = true; L.src = url; settle(); } else next(); };
+    img.onerror = next;
+    img.src = url;
+  })();
+  document.addEventListener('DOMContentLoaded', L.apply);
+})();
+</script>
 <script src="portal.js"></script>
 <script src="conferences.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <style>
-:root{--navy:#1f3a5f;--navy2:#2c5282;--gold:#c8a24a;--bg:#f2f5fa;--card:#fff;--txt:#1d2733;--mut:#6b7785;--line:#dfe5ee;--ok:#1f8a4c;--warn:#c27c0e;--bad:#c0392b}
+:root{--navy:#17325c;--navy2:#2a5298;--gold:#c9a24d;--gold2:#e8cf8f;--bg:#f5f3ee;--card:#fff;--txt:#1b2635;--mut:#6a7686;--line:#e1e5ec;--ok:#1f8a4c;--warn:#c27c0e;--bad:#c0392b;--radius:18px;--shadow:0 6px 24px rgba(23,50,92,.09)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
-body{font-family:'Cairo',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--txt);line-height:1.7;font-size:15px;overflow-x:hidden}
-header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;text-align:center;padding:22px 14px 26px}
-header h1{margin:0;font-size:22px}
-header p{margin:4px 0 0;opacity:.9;font-size:14px}
-header .cross{color:var(--gold);font-size:26px;line-height:1}
-nav#mainNav{display:flex;gap:6px;max-width:1000px;margin:-16px auto 0;padding:0 10px;position:relative}
-nav#mainNav button{flex:1;border:0;background:#fff;color:var(--navy);padding:11px 4px;border-radius:12px 12px 0 0;font:inherit;font-weight:700;cursor:pointer;box-shadow:0 -2px 8px rgba(0,0,0,.05);font-size:14px;white-space:nowrap}
-nav#mainNav button.on{background:var(--gold);color:#fff}
-main{max-width:1000px;margin:0 auto;padding:0 10px 40px}
-#sysBanner{max-width:1000px;margin:10px auto 0;padding:0 10px}
-.panel{background:var(--card);border-radius:0 0 14px 14px;box-shadow:0 4px 18px rgba(31,58,95,.08);padding:18px}
+body{font-family:'Cairo',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--txt);line-height:1.75;font-size:15px;overflow-x:hidden}
+a{color:var(--navy2)}
+
+/* ===== الهيدر (Hero) ===== */
+header.hero{position:relative;overflow:hidden;text-align:center;color:#fff;padding:26px 16px 58px;border-radius:0 0 34px 34px;
+  background:radial-gradient(circle at 50% -10%,rgba(255,255,255,.16),transparent 55%),linear-gradient(160deg,var(--navy) 0%,var(--navy2) 100%)}
+header.hero::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cpath d='M36 14v44M22 30h28' stroke='%23ffffff' stroke-opacity='.055' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E")}
+header.hero>*{position:relative}
+.hero-logo{width:108px;height:108px;margin:0 auto 12px;border-radius:50%;background:#fff;border:4px solid var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,0,.28),0 0 0 7px rgba(255,255,255,.12)}
+.hero h1{margin:0;font-size:26px;font-weight:800;line-height:1.4}
+.hero .church{margin:6px auto 0;max-width:560px;font-size:14.5px;line-height:1.8;color:var(--gold2);font-weight:600;text-wrap:balance}
+.hero .orn{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 0;color:var(--gold)}
+.hero .orn i{display:block;width:54px;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--gold))}
+.hero .orn i:last-child{transform:scaleX(-1)}
+
+/* ===== التابات الرئيسية (من غير slider) ===== */
+.navwrap{position:sticky;top:0;z-index:40;max-width:1000px;margin:-32px auto 0;padding:0 12px 6px}
+nav#mainNav{display:flex;gap:4px;padding:5px;background:rgba(255,255,255,.96);border-radius:18px;border:1px solid rgba(201,162,77,.38);box-shadow:0 10px 28px rgba(23,50,92,.2);backdrop-filter:blur(8px)}
+nav#mainNav button{flex:1;border:0;background:transparent;color:var(--navy);padding:11px 4px;border-radius:14px;font:inherit;font-weight:700;cursor:pointer;font-size:14.5px;white-space:nowrap;transition:background .2s,transform .15s}
+nav#mainNav button:hover{background:#eef2f9}
+nav#mainNav button.on{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;box-shadow:0 4px 12px rgba(23,50,92,.35)}
+main{max-width:1000px;margin:0 auto;padding:6px 12px 30px}
+#sysBanner{max-width:1000px;margin:10px auto 0;padding:0 12px}
+
+.panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-top:10px;border:1px solid rgba(225,229,236,.7)}
 .narrow{max-width:400px;margin:6px auto}
-.sec{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;background:#fcfdff;min-width:0}
-.sec h3{margin:0 0 10px;color:var(--navy);font-size:16px;border-right:4px solid var(--gold);padding-right:8px}
+.mini-logo{width:72px;height:72px;margin:0 auto 8px;border-radius:50%;background:#fff;border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 4px 14px rgba(23,50,92,.18)}
+.mini-logo .logo-fb{font-size:34px}
+.nano-logo{width:38px;height:38px;flex:none;border-radius:50%;background:#fff;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.nano-logo .logo-fb{font-size:18px}
+.sec{border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;background:linear-gradient(180deg,#fff,#fbfcfe);min-width:0}
+.sec h3{margin:0 0 12px;color:var(--navy);font-size:16.5px;border-right:5px solid var(--gold);padding-right:10px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:640px){.grid2{grid-template-columns:1fr}}
 .field{margin-bottom:10px}
-.field label{display:block;font-weight:600;margin-bottom:3px;font-size:14px}
+.field label{display:block;font-weight:600;margin-bottom:4px;font-size:14px;color:#2b3a50}
 .field label b{color:var(--bad)}
-input,select,textarea{width:100%;font:inherit;padding:10px 11px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--txt)}
+input,select,textarea{width:100%;font:inherit;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--txt);transition:border-color .15s,box-shadow .15s}
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select{min-height:46px}
 input[type=date],input[type=time]{min-height:46px}
 input[type=checkbox],input[type=radio]{width:auto}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy2);box-shadow:0 0 0 3px rgba(44,82,130,.15)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy2);box-shadow:0 0 0 4px rgba(42,82,152,.14)}
 input[dir=ltr]{text-align:right}
 .field.err input,.field.err select,.field.err textarea,.photo.err{border-color:var(--bad);background:#fff6f5}
 small.hint{display:block;color:var(--mut);font-size:12.5px;min-height:18px}
 small.hint.bad{color:var(--bad)} small.hint.good{color:var(--ok)}
-.btn{border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer;background:#e9eef6;color:var(--navy)}
+.btn{border:0;border-radius:12px;padding:10px 16px;font:inherit;font-weight:700;cursor:pointer;background:#e9eef7;color:var(--navy);transition:transform .15s,box-shadow .15s,filter .15s}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 12px rgba(23,50,92,.15)}
+.btn:active:not(:disabled){transform:translateY(0)}
 .btn:disabled{opacity:.55;cursor:not-allowed}
-.btn.pri{background:var(--navy);color:#fff}.btn.gold{background:var(--gold);color:#fff}
-.btn.ok{background:var(--ok);color:#fff}.btn.bad{background:var(--bad);color:#fff}.btn.wa{background:#25d366;color:#063}
-.btn.sm{padding:5px 10px;font-size:13px}
+.btn.pri{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff}
+.btn.gold{background:linear-gradient(135deg,#b88f35,var(--gold));color:#fff}
+.btn.ok{background:linear-gradient(135deg,#1a7a43,var(--ok));color:#fff}.btn.bad{background:linear-gradient(135deg,#a93226,var(--bad));color:#fff}.btn.wa{background:#25d366;color:#053}
+.btn.sm{padding:5px 11px;font-size:13px;border-radius:10px}
 .btn.wide{width:100%;padding:13px;font-size:16px}
-.formerr{background:#fdecea;color:var(--bad);border:1px solid #f5c6c1;border-radius:10px;padding:9px 12px;margin:8px 0;font-weight:600}
-.notice{border-radius:10px;padding:10px 13px;margin-bottom:12px}
+.formerr{background:#fdecea;color:var(--bad);border:1px solid #f5c6c1;border-radius:12px;padding:9px 12px;margin:8px 0;font-weight:600}
+.notice{border-radius:12px;padding:10px 13px;margin-bottom:12px}
 .notice.warn{background:#fff6e0;border:1px solid #f0d9a0;color:#7a5a05}
 .notice.good{background:#e8f6ee;border:1px solid #b7e1c6;color:#16653a}
 .notice.bad{background:#fdecea;border:1px solid #f5c6c1;color:#8f2a20}
 .notice.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
-.photo{border:1.5px dashed var(--line);border-radius:12px;padding:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.photo .prev{width:130px;height:130px;border-radius:10px;background:#eef2f8;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12.5px;overflow:hidden;flex:none;text-align:center}
+.photo{border:1.5px dashed #cfd7e4;border-radius:14px;padding:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#fbfcfe}
+.photo .prev{width:130px;height:130px;border-radius:12px;background:#eef2f8;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12.5px;overflow:hidden;flex:none;text-align:center}
 .photo.idc .prev{width:190px;height:130px}
 .photo .prev img{width:100%;height:100%;object-fit:cover;display:block}
 .photo .btns{display:flex;flex-direction:column;gap:6px}
 .photo-title{font-weight:700;margin:6px 0 4px}
 .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12.5px;font-weight:700}
 .badge.p{background:#fff1d6;color:var(--warn)}.badge.o{background:#dff3e7;color:var(--ok)}.badge.n{background:#fbe1de;color:var(--bad)}.badge.s{background:#ede9fe;color:#5b21b6}.badge.g{background:#e5e7eb;color:#4b5563}.badge.b{background:#dbeafe;color:#1e40af}
-.code{font-size:34px;font-weight:700;letter-spacing:6px;color:var(--navy);direction:ltr;text-align:center;background:#f5f8fd;border:2px dashed var(--gold);border-radius:12px;padding:8px;margin:10px 0}
+.code{font-size:34px;font-weight:700;letter-spacing:6px;color:var(--navy);direction:ltr;text-align:center;background:linear-gradient(180deg,#fffdf6,#f8f3e3);border:2px dashed var(--gold);border-radius:14px;padding:8px;margin:10px 0}
 .card-title{text-align:center;font-weight:700;color:var(--navy);margin:16px 0 4px}
-img.idcard{display:block;width:100%;max-width:560px;margin:8px auto 12px;border-radius:14px;box-shadow:0 6px 22px rgba(31,58,95,.28);-webkit-touch-callout:default}
+img.idcard{display:block;width:100%;max-width:560px;margin:8px auto 12px;border-radius:16px;box-shadow:0 8px 26px rgba(23,50,92,.3);-webkit-touch-callout:default}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
 @media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
-.stat{background:#f5f8fd;border:1px solid var(--line);border-radius:12px;text-align:center;padding:8px}
-.stat b{display:block;font-size:22px;color:var(--navy)}.stat span{font-size:13px;color:var(--mut)}
-.tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:68vh}
+.stat{background:linear-gradient(180deg,#fff,#f5f8fd);border:1px solid var(--line);border-radius:14px;text-align:center;padding:9px}
+.stat b{display:block;font-size:23px;color:var(--navy)}.stat span{font-size:13px;color:var(--mut)}
+.tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;max-height:68vh}
 table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:720px}
-th{position:sticky;top:0;background:var(--navy);color:#fff;padding:8px;text-align:right;white-space:nowrap}
+th{position:sticky;top:0;background:var(--navy);color:#fff;padding:9px 8px;text-align:right;white-space:nowrap}
 td{padding:7px 8px;border-top:1px solid var(--line);white-space:nowrap}
 tr.r:hover td{background:#f5f8fd;cursor:pointer}
 table.tblA,table.tblB{min-width:0}
@@ -81,48 +159,50 @@ table.tblA td,table.tblA th,table.tblB td,table.tblB th{white-space:normal;verti
 .acts{display:flex;gap:6px;flex-wrap:wrap}
 .ltr{direction:ltr;unicode-bidi:plaintext}
 .chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--mut);margin:2px 0 6px;cursor:pointer}
-.modal{position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px}
+.modal{position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;backdrop-filter:blur(2px)}
 #cropModal{z-index:75}
-.modal .box{background:#fff;border-radius:14px;max-width:760px;width:100%;padding:16px;margin:auto}
+.modal .box{background:#fff;border-radius:18px;max-width:760px;width:100%;padding:18px;margin:auto;box-shadow:0 24px 70px rgba(0,0,0,.35)}
 .modal .box.sm{max-width:420px}
 .modal h3.mt{margin:0 0 8px;color:var(--navy)}
 .adm-photos{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .adm-photos figure{margin:0;text-align:center;flex:1;min-width:150px}
-.adm-photos .im{position:relative;height:190px;border-radius:10px;background:#eef2f8;display:flex;align-items:center;justify-content:center;color:var(--mut);overflow:hidden;padding:8px;text-align:center;font-size:13px;word-break:break-word}
+.adm-photos .im{position:relative;height:190px;border-radius:12px;background:#eef2f8;display:flex;align-items:center;justify-content:center;color:var(--mut);overflow:hidden;padding:8px;text-align:center;font-size:13px;word-break:break-word}
 .adm-photos .im.pend{outline:3px solid var(--gold)}
-.adm-photos .im.pend::after{content:'جديدة - بتتحفظ مع «حفظ التعديلات»';position:absolute;bottom:0;left:0;right:0;background:rgba(200,162,74,.95);color:#fff;font-size:12px;padding:2px}
+.adm-photos .im.pend::after{content:'جديدة - بتتحفظ مع «حفظ التعديلات»';position:absolute;bottom:0;left:0;right:0;background:rgba(201,162,77,.95);color:#fff;font-size:12px;padding:2px}
 .adm-photos img{width:100%;height:100%;object-fit:contain;cursor:zoom-in;background:#000}
 .adm-photos figcaption{font-size:13px;margin-top:3px;color:var(--mut)}
-#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;border-radius:24px;z-index:99;max-width:92%;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 18px;border-radius:24px;z-index:99;max-width:92%;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.3)}
 #toast.err{background:var(--bad)}#toast.ok{background:var(--ok)}
-canvas#cropCanvas{width:100%;max-width:320px;aspect-ratio:1;touch-action:none;border-radius:10px;background:#000;display:block;margin:0 auto;cursor:grab}
+canvas#cropCanvas{width:100%;max-width:320px;aspect-ratio:1;touch-action:none;border-radius:12px;background:#000;display:block;margin:0 auto;cursor:grab}
 .spin{display:inline-block;width:16px;height:16px;border:3px solid #ccd;border-top-color:var(--navy);border-radius:50%;animation:sp 1s linear infinite;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
 .lead{color:var(--mut);margin:0 0 12px}
 .empty{text-align:center;color:var(--mut);padding:26px 10px}
 /* ===== تبويبات فرعية: من غير slider، لو مفيش مكان بتنزل سطر تاني ===== */
 .subtabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
-.subtabs button{flex:1 1 auto;border:1.5px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;padding:7px 12px;font:inherit;font-weight:700;cursor:pointer;font-size:14px;white-space:nowrap}
-.subtabs button.on{background:var(--navy);border-color:var(--navy);color:#fff}
-.who{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#f5f8fd;border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.subtabs button{flex:1 1 auto;border:1.5px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;padding:7px 12px;font:inherit;font-weight:700;cursor:pointer;font-size:14px;white-space:nowrap;transition:all .15s}
+.subtabs button:hover{border-color:var(--navy2)}
+.subtabs button.on{background:linear-gradient(135deg,var(--navy),var(--navy2));border-color:var(--navy);color:#fff}
+.who{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:linear-gradient(180deg,#f8fafd,#eff4fb);border:1px solid var(--line);border-radius:14px;padding:8px 12px}
+.who .wl{display:flex;align-items:center;gap:10px;min-width:0}
 /* ===== أخبار ===== */
-.post{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;background:#fff}
-.post.pin{border-color:var(--gold);background:#fffdf6}
+.post{border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px rgba(23,50,92,.04)}
+.post.pin{border-color:var(--gold);background:linear-gradient(180deg,#fffdf6,#fff)}
 .post h4{margin:0 0 2px;color:var(--navy);font-size:17px}
 .post .meta{font-size:12.5px;color:var(--mut);margin-bottom:6px}
 .post .body{white-space:pre-wrap;word-break:break-word}
 .pimgs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
 .pimgs.one{grid-template-columns:1fr}
-.pimg{background:#eef2f8;border-radius:10px;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:zoom-in;color:var(--mut);font-size:12px}
+.pimg{background:#eef2f8;border-radius:12px;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:zoom-in;color:var(--mut);font-size:12px}
 .pimg img{width:100%;display:block;object-fit:cover;max-height:420px}
 .pimgs.one .pimg img{max-height:520px;object-fit:contain;background:#f8fafc}
-/* ===== رحلات ===== */
-.trip{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;background:#fff}
+/* ===== رحلات ومؤتمرات ===== */
+.trip{border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;background:#fff;box-shadow:0 2px 8px rgba(23,50,92,.04)}
 .trip.past{opacity:.75}
 .trip h4{margin:0 0 4px;color:var(--navy);font-size:17px}
 .trip .tmeta{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13.5px;color:#475569;margin-bottom:6px}
 .tbar{height:8px;border-radius:99px;background:#e5e7eb;overflow:hidden;margin:6px 0}
-.tbar i{display:block;height:100%;background:var(--ok)}
+.tbar i{display:block;height:100%;background:linear-gradient(90deg,var(--ok),#45b36f)}
 .tstate{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-weight:700;direction:ltr;max-width:160px}
 /* ===== الأتوبيس ===== */
@@ -150,7 +230,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 /* ===== سجل التدقيق والمحذوفات (سوبر أدمن) ===== */
 .flt{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
 .flt input,.flt select{padding:8px 10px}
-.aud{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fff}
+.aud{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;background:#fff}
 .aud.danger{border-color:#f5c6c1;background:#fff8f7}
 .aud .top{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--mut)}
 .aud h5{margin:4px 0;font-size:15px;color:var(--navy)}
@@ -160,36 +240,58 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 .aud .chg ins{color:var(--ok);text-decoration:none;font-weight:600}
 .msgs div{margin:6px 0}
 /* ===== نوافذ ديناميكية ===== */
-.ov{position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:65;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px}
-.mb{background:#fff;border-radius:14px;max-width:820px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.ov{position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:65;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px;backdrop-filter:blur(2px)}
+.mb{background:#fff;border-radius:18px;max-width:820px;width:100%;margin:auto;box-shadow:0 24px 70px rgba(0,0,0,.35)}
 .mb.nar{max-width:480px}
-.mb>header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;border-radius:14px 14px 0 0;z-index:2;text-align:right}
+.mb>header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;border-radius:18px 18px 0 0;z-index:2;text-align:right}
 .mb>header h3{margin:0;font-size:17px;color:var(--navy)}
 .mb .bd{padding:14px 16px}
-.mb .ft{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;border-radius:0 0 14px 14px}
-.xb{border:0;background:#eef1f6;border-radius:8px;width:34px;height:34px;font-size:20px;cursor:pointer}
+.mb .ft{padding:10px 16px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;border-radius:0 0 18px 18px}
+.xb{border:0;background:#eef1f6;border-radius:10px;width:34px;height:34px;font-size:20px;cursor:pointer}
 .nimgs{display:flex;gap:8px;flex-wrap:wrap}
-.nimgs .ni{position:relative;width:96px;height:96px;border-radius:10px;overflow:hidden;background:#eef2f8;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--mut)}
+.nimgs .ni{position:relative;width:96px;height:96px;border-radius:12px;overflow:hidden;background:#eef2f8;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--mut)}
 .nimgs .ni img{width:100%;height:100%;object-fit:cover}
 .nimgs .ni button{position:absolute;top:2px;left:2px;border:0;background:rgba(192,57,43,.92);color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1}
 .nimgs .add{border:2px dashed var(--line);background:#fff;cursor:pointer;font-size:26px;color:var(--navy)}
-@media(max-width:640px){nav#mainNav button{font-size:12.5px;padding:10px 2px}}
+/* ===== الفوتر ===== */
+.site-foot{max-width:1000px;margin:6px auto 0;padding:22px 16px 34px;text-align:center;color:var(--mut)}
+.site-foot .nano-logo{width:56px;height:56px;margin:0 auto 8px}
+.site-foot .nano-logo .logo-fb{font-size:26px}
+.site-foot b{display:block;color:var(--navy);font-size:15px}
+.site-foot>span{display:block;font-size:13px;line-height:1.7;margin-top:2px;text-wrap:balance}
+@media(max-width:640px){
+  header.hero{padding:22px 12px 54px}.hero h1{font-size:22px}.hero .church{font-size:13.5px}.hero-logo{width:92px;height:92px}
+  nav#mainNav button{font-size:12.5px;padding:10px 2px}.panel{padding:16px}
+}
 </style>
 </head>
-<body>
+<body class="lock">
 
-<header>
-  <div class="cross">✝</div>
-  <h1>اجتماع شباب «اتبعني»</h1>
-  <p>كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان</p>
+<!-- ============ شاشة البداية: اللوجو بيتحمّل الأول ============ -->
+<div id="splash" role="status" aria-label="جاري التحميل">
+  <div class="sp-in">
+    <div class="sp-logo logo-box"><img data-logo alt="شعار الكنيسة"><span class="logo-fb">✝</span></div>
+    <div class="sp-title" data-brand="event">اجتماع شباب «اتبعني»</div>
+    <div class="sp-sub" data-brand="church">كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان</div>
+    <div class="sp-bar"><i></i></div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="hero-logo logo-box"><img data-logo alt="شعار الكنيسة"><span class="logo-fb">✝</span></div>
+  <h1 data-brand="event">اجتماع شباب «اتبعني»</h1>
+  <p class="church" data-brand="church">كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان</p>
+  <div class="orn"><i></i>✝<i></i></div>
 </header>
 
-<nav id="mainNav">
-  <button class="on" data-tab="register">التسجيل</button>
-  <button data-tab="status">استعلام</button>
-  <button data-tab="member" id="navMember">دخول الأعضاء</button>
-  <button data-tab="admin">الأدمن</button>
-</nav>
+<div class="navwrap">
+  <nav id="mainNav">
+    <button class="on" data-tab="register">التسجيل</button>
+    <button data-tab="status">استعلام</button>
+    <button data-tab="member" id="navMember">دخول الأعضاء</button>
+    <button data-tab="admin">الأدمن</button>
+  </nav>
+</div>
 
 <div id="sysBanner" hidden><div class="notice bad" id="sysMsg"></div></div>
 
@@ -234,6 +336,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 <!-- ============ الأعضاء ============ -->
 <section class="panel" id="tab-member" hidden>
   <div id="memLogin" class="narrow">
+    <div class="mini-logo logo-box"><img data-logo alt="شعار الكنيسة"><span class="logo-fb">✝</span></div>
     <h3 style="color:var(--navy);text-align:center;margin-top:0">دخول الأعضاء</h3>
     <p class="lead" style="text-align:center">اليوزر هو <b>كودك الخاص</b> (7 أرقام)، وكلمة المرور في أول مرة هي <b>رقم الواتساب</b> المسجّل.</p>
     <form id="memForm" novalidate>
@@ -246,7 +349,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
     <small class="hint" style="margin-top:8px">نسيت كلمة المرور؟ اطلب من الإدارة ترجّعها لرقم الواتساب.</small>
   </div>
   <div id="memPortal" hidden>
-    <div class="who"><div>أهلًا <b id="memName"></b> · الكود <b class="ltr" id="memCodeShow" style="display:inline-block"></b></div><button class="btn sm bad" id="memLogout">خروج</button></div>
+    <div class="who"><div class="wl"><div class="nano-logo logo-box"><img data-logo alt=""><span class="logo-fb">✝</span></div><div>أهلًا <b id="memName"></b> · الكود <b class="ltr" id="memCodeShow" style="display:inline-block"></b></div></div><button class="btn sm bad" id="memLogout">خروج</button></div>
     <div class="notice warn" id="memPwWarn" style="margin-top:10px" hidden>كلمة مرورك الحالية هي رقم الواتساب. يفضّل تغييرها من <a href="#" id="memGoAcct">حسابي</a>.</div>
     <!-- الترتيب: الأخبار، الرحلات، المؤتمرات، حسابي. الرحلات والمؤتمرات مخفية لحد ما الخادم يقول إن فيه حاجة منهم -->
     <div class="subtabs" id="memTabs">
@@ -265,6 +368,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 <!-- ============ الأدمن ============ -->
 <section class="panel" id="tab-admin" hidden>
   <div id="admLogin" class="narrow">
+    <div class="mini-logo logo-box"><img data-logo alt="شعار الكنيسة"><span class="logo-fb">✝</span></div>
     <h3 style="color:var(--navy);text-align:center;margin-top:0">دخول الأدمن</h3>
     <form id="admForm" novalidate>
       <div class="field"><label>اسم المستخدم</label><input id="admUser" data-t="user" dir="ltr" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next"></div>
@@ -276,7 +380,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 
   <div id="admDash" hidden>
     <div class="row" style="justify-content:space-between">
-      <div>مرحبًا <b id="admName"></b> <span class="badge s" id="admRole" hidden>سوبر أدمن</span></div>
+      <div class="row" style="gap:10px"><div class="nano-logo logo-box"><img data-logo alt=""><span class="logo-fb">✝</span></div><div>مرحبًا <b id="admName"></b> <span class="badge s" id="admRole" hidden>سوبر أدمن</span></div></div>
       <div class="row">
         <button class="btn sm pri" id="admAdmins" hidden>👥 إدارة الأدمنز</button>
         <button class="btn sm" id="admAccount">🔑 حسابي</button>
@@ -320,6 +424,12 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
   </div>
 </section>
 </main>
+
+<footer class="site-foot">
+  <div class="nano-logo logo-box"><img data-logo alt="شعار الكنيسة"><span class="logo-fb">✝</span></div>
+  <b data-brand="event">اجتماع شباب «اتبعني»</b>
+  <span data-brand="church">كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان</span>
+</footer>
 
 <!-- ============ قالب النموذج ============ -->
 <template id="tplForm">
@@ -482,6 +592,44 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 const API_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || '';
 // لازم يطابق APP_VERSION في Code.gs. لو مختلف يظهر تنبيه "الخادم قديم" فوق الصفحة.
 const EXPECTED_VERSION = '2026-10-22-audit-v6';
+
+/* =========================================================
+   الاسم المعتمد (مكان واحد): أي مكان في الموقع فيه اسم الكنيسة أو الاجتماع بيقرأ من هنا
+   ========================================================= */
+const EVENT_NAME = 'اجتماع شباب «اتبعني»';
+const CHURCH_NAME = 'كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان';
+(function brand() {
+  document.title = EVENT_NAME + ' - ' + CHURCH_NAME;
+  document.querySelectorAll('[data-brand="event"]').forEach(e => { e.textContent = EVENT_NAME; });
+  document.querySelectorAll('[data-brand="church"]').forEach(e => { e.textContent = CHURCH_NAME; });
+  const c = (window.APP_CONFIG && window.APP_CONFIG.COLORS) || {};          // اختياري: ألوان الموقع من config.js
+  if (c.navy) document.documentElement.style.setProperty('--navy', c.navy);
+  if (c.navy2) document.documentElement.style.setProperty('--navy2', c.navy2);
+  if (c.gold) document.documentElement.style.setProperty('--gold', c.gold);
+  if (window.LOGO && window.LOGO.apply) window.LOGO.apply();
+})();
+
+/* =========================================================
+   شاشة البداية: الشعار بيتحمّل الأول، وبعدها الموقع بيظهر (بعد تحميل الصفحة وأول رد من الخادم)
+   ========================================================= */
+(function splash() {
+  const sp = document.getElementById('splash'); if (!sp) { document.body.classList.remove('lock'); return; }
+  const L = window.LOGO || { settled: true };
+  let done = false;
+  window.__siteReady = new Promise(res => { window.__siteReadyRes = res; });
+  const hide = () => {
+    if (done) return; done = true;
+    sp.classList.add('hide'); document.body.classList.remove('lock');
+    setTimeout(() => sp.remove(), 900);
+  };
+  const logoP = new Promise(res => { if (L.settled) res(); else window.addEventListener('logosettled', res, { once: true }); });
+  const loadP = new Promise(res => { if (document.readyState === 'complete') res(); else window.addEventListener('load', res, { once: true }); });
+  Promise.all([logoP, loadP]).then(() => {
+    // الشعار بيفضل ظاهر ~ثانية بعد ما يتحمّل (عشان يتشاف)، وبعدها بنستنى أول رد من الخادم (بحد أقصى 2.5 ثانية)
+    setTimeout(() => Promise.race([window.__siteReady, new Promise(r => setTimeout(r, 2500))]).then(hide), 950);
+  });
+  setTimeout(hide, 6500);                                                          // حد أقصى: الموقع بيفتح حتى لو حاجة اتعطلت
+})();
 
 const LISTS = {
   stages: {
@@ -656,11 +804,11 @@ const QR = (function () {
 })();
 
 /* =========================================================
-   كارت الـ ID (CR80: 85.6×54 مم بدقة 300 dpi = 1011×638 بكسل)
+   كارت الـ ID (CR80: 85.6×54 مم بدقة 300 dpi = 1011×638 بكسل) — بالشعار واسم الكنيسة المعتمد
    ========================================================= */
 const CARD_W = 1011, CARD_H = 638;
-const CARD_TITLE = 'اجتماع شباب «اتبعني»';
-const CARD_SUB = 'كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس - العاشر من رمضان';
+const CARD_TITLE = EVENT_NAME;
+const CARD_SUB = CHURCH_NAME;
 const CARD_FONT = "'Cairo', Tahoma, Arial, sans-serif";
 
 function rrect(g, x, y, w, h, r) {
@@ -669,7 +817,7 @@ function rrect(g, x, y, w, h, r) {
   g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
 }
 function crossShape(g, cx, cy, s) {
-  g.fillStyle = '#c8a24a';
+  g.fillStyle = '#c9a24d';
   rrect(g, cx - s * 0.14, cy - s * 0.5, s * 0.28, s, s * 0.05); g.fill();
   rrect(g, cx - s * 0.38, cy - s * 0.22, s * 0.76, s * 0.26, s * 0.05); g.fill();
 }
@@ -681,19 +829,36 @@ function nameLines(g, name, maxW) {
   if (cur) lines.push(cur);
   return { size, lines: lines.slice(0, 3) };
 }
+// أكبر خط (≥ min) يخلّي النص يتساع في maxW
+function fitFont(g, text, weight, start, min, maxW) {
+  for (let s = start; s >= min; s -= 1) { g.font = `${weight} ${s}px ${CARD_FONT}`; if (g.measureText(text).width <= maxW) return s; }
+  return min;
+}
 
 function drawCard(g, d) {
-  const W = CARD_W, H = CARD_H, NAVY = '#1f3a5f', GOLD = '#c8a24a';
+  const W = CARD_W, H = CARD_H, NAVY = '#17325c', GOLD = '#c9a24d';
   g.save(); g.clearRect(0, 0, W, H);
   rrect(g, 0, 0, W, H, 34); g.clip();
   g.fillStyle = '#fffdf6'; g.fillRect(0, 0, W, H);
-  const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, NAVY); gr.addColorStop(1, '#2c5282');
+  const gr = g.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, NAVY); gr.addColorStop(1, '#2a5298');
   g.fillStyle = gr; g.fillRect(0, 0, W, 130);
   g.fillStyle = GOLD; g.fillRect(0, 130, W, 6);
-  crossShape(g, 64, 62, 54); crossShape(g, W - 64, 62, 54);
+
+  // الشعار (يمين) في دائرة بيضاء بإطار ذهبي. لو الشعار مش متاح بيتحط صليب بداله
+  const LR = 46, lcx = W - 78, lcy = 66;
+  if (d.logo) {
+    g.save(); g.beginPath(); g.arc(lcx, lcy, LR + 5, 0, Math.PI * 2); g.fillStyle = GOLD; g.fill();
+    g.beginPath(); g.arc(lcx, lcy, LR, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); g.clip();
+    const iw = d.logo.naturalWidth || d.logo.width, ih = d.logo.naturalHeight || d.logo.height, k = Math.min((LR * 1.7) / iw, (LR * 1.7) / ih);
+    g.drawImage(d.logo, lcx - iw * k / 2, lcy - ih * k / 2, iw * k, ih * k);
+    g.restore();
+  } else crossShape(g, W - 64, 62, 54);
+  crossShape(g, 64, 62, 54);
+
   g.direction = 'rtl'; g.textBaseline = 'middle'; g.textAlign = 'center';
-  g.fillStyle = '#ffffff'; g.font = `700 46px ${CARD_FONT}`; g.fillText(CARD_TITLE, W / 2, 56);
-  g.fillStyle = '#f1e2b0'; g.font = `400 24px ${CARD_FONT}`; g.fillText(CARD_SUB, W / 2, 102);
+  const tw0 = W - 2 * 150;                                                         // المساحة بين الصليب والشعار
+  g.fillStyle = '#ffffff'; g.font = `700 ${fitFont(g, CARD_TITLE, 700, 46, 30, tw0)}px ${CARD_FONT}`; g.fillText(CARD_TITLE, W / 2, 50);
+  g.fillStyle = '#f1e2b0'; g.font = `600 ${fitFont(g, CARD_SUB, 600, 24, 15, tw0)}px ${CARD_FONT}`; g.fillText(CARD_SUB, W / 2, 102);
 
   const PS = 300, px = W - 40 - PS, py = 205;
   g.fillStyle = GOLD; rrect(g, px - 7, py - 7, PS + 14, PS + 14, 28); g.fill();
@@ -746,13 +911,29 @@ function drawCard(g, d) {
   g.restore();
 }
 
+// الشعار للـ canvas: لازم يتحمّل بـ CORS عشان الكارت يتحمّل PNG (لو الشعار على نفس الموقع logo.png ده شغّال دايمًا). لو فشل الكارت بيتعمل بالصليب.
+let _logoCanvas;
+function canvasLogo() {
+  if (_logoCanvas !== undefined) return Promise.resolve(_logoCanvas);
+  const L = window.LOGO;
+  if (!L || !L.ready || !L.src) return Promise.resolve(null);
+  return new Promise(res => {
+    const i = new Image(); i.crossOrigin = 'anonymous';
+    i.onload = () => { _logoCanvas = i; res(i); };
+    i.onerror = () => { _logoCanvas = null; res(null); };
+    i.src = L.src;
+  });
+}
+
 async function renderCard(d) {
   try {
     if (document.fonts && document.fonts.load) await Promise.all([
       document.fonts.load('700 46px Cairo', d.name + CARD_TITLE + '0123456789'),
-      document.fonts.load('400 24px Cairo', CARD_SUB + 'الاسم الكود امسح عند الدخول كارت شخصي يُرجى إبراز')
+      document.fonts.load('600 24px Cairo', CARD_SUB + 'الاسم الكود امسح عند الدخول كارت شخصي يُرجى إبراز')
     ]);
   } catch (e) {}
+  if (window.LOGO && !window.LOGO.settled) await new Promise(r => window.addEventListener('logosettled', r, { once: true }));
+  d.logo = await canvasLogo();
   const cv = document.createElement('canvas'); cv.width = CARD_W; cv.height = CARD_H;
   drawCard(cv.getContext('2d'), d);
   return cv;
@@ -1002,7 +1183,7 @@ api('info').then(r => {
   if (!r.ok) return sysBanner(r.error);
   setOpenUI(r.open);
   if (r.version !== EXPECTED_VERSION) sysBanner('الخادم (Apps Script) شغّال بنسخة قديمة من الكود. اعمل: Deploy ← Manage deployments ← ✏️ ← Version: New version ← Deploy. (لو عملت New deployment انسخ الرابط الجديد في config.js)');
-});
+}).finally(() => { if (window.__siteReadyRes) window.__siteReadyRes(); });
 
 $('#regBtn').onclick = async () => {
   if (regBusy) return;
@@ -1258,7 +1439,7 @@ function refreshDetail() {
   $('#dName').textContent = r.fullName;
   $('#dHead').innerHTML = badge(r.status) + (r.code ? ` <span class="ltr"><b>الكود: ${esc(r.code)}</b></span>` : '') + (r.status === 'مرفوض' && r.rejectReason ? ` <span style="color:var(--bad)">السبب: ${esc(r.rejectReason)}</span>` : '');
   const wa = 'https://wa.me/2' + digits(r.whatsapp) + '?text=' + encodeURIComponent(
-    `أهلًا ${r.fullName.split(' ')[0]}،\nتم قبول تسجيلك في اجتماع شباب «اتبعني» - كاتدرائية الشهيد العظيم مارمينا والبابا كيرلس السادس بالعاشر من رمضان ✝️\nكودك الخاص: ${r.code}\nتقدر تدخل الموقع من «دخول الأعضاء»: اليوزر = كودك، وكلمة المرور = رقم الواتساب.`);
+    `أهلًا ${r.fullName.split(' ')[0]}،\nتم قبول تسجيلك في ${EVENT_NAME} - ${CHURCH_NAME} ✝️\nكودك الخاص: ${r.code}\nتقدر تدخل الموقع من «دخول الأعضاء»: اليوزر = كودك، وكلمة المرور = رقم الواتساب.`);
   $('#dActions').innerHTML = `<button class="btn pri" id="dSave">💾 حفظ التعديلات</button>` +
     (r.status !== 'مقبول' ? `<button class="btn ok" id="dAcc">قبول</button>` : '') + (r.status !== 'مرفوض' ? `<button class="btn bad" id="dRej">رفض</button>` : '') +
     `<button class="btn" id="dDel">🗑 حذف</button>` +
