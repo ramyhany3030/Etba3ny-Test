@@ -1,11 +1,11 @@
 /* =====================================================================
-   portal.js — بوابة الأعضاء (أخبار/رحلات/حسابي) + إدارة الأخبار والرحلات للأدمن + خريطة الأتوبيس
-   بيتحمّل قبل السكريبت الرئيسي في index.html. كل الدوال بتتنادى بعد ما الصفحة تجهز.
+   portal.js — بوابة الأعضاء (أخبار/رحلات/مؤتمرات/حسابي) + إدارة الأخبار والرحلات للأدمن + خريطة الأتوبيس
+   + سجل التدقيق وسلة المحذوفات (سوبر أدمن). بيتحمّل قبل السكريبت الرئيسي في index.html.
    ===================================================================== */
 
 const PM = { token: sessionStorage.getItem('m_tok') || '', name: sessionStorage.getItem('m_name') || '', code: sessionStorage.getItem('m_code') || '',
-  mustChange: false, tab: 'news', imgs: {}, news: { items: [], total: 0 }, trips: [], io: null, dirty: false };
-const PA = { news: [], trips: [] };
+  mustChange: false, tab: 'news', tabs: null, imgs: {}, news: { items: [], total: 0 }, trips: [], io: null, dirty: false };
+const PA = { news: [], trips: [], audit: { items: [], hasMore: false }, trashView: 'deleted' };
 const P_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 function pDate(iso) {
@@ -25,6 +25,12 @@ function pModal(title, body, foot, o) {
   const close = () => { if (ov._closed) return; ov._closed = true; if (o.onClose) o.onClose(); ov.remove(); };
   ov._close = close; ov.querySelector('[data-x]').onclick = close;
   return { el: ov, close, q: s => ov.querySelector(s), qa: s => Array.from(ov.querySelectorAll(s)) };
+}
+// رسالة بنقاط (تنبيهات أو أخطاء). kind: warn | bad | good
+function pInfo(title, lines, kind) {
+  const m = pModal(title, `<div class="msgs">${lines.map(l => `<div class="notice ${kind || 'warn'}" style="margin:0 0 6px">${esc(l)}</div>`).join('')}</div>`, '<button class="btn pri" data-ok>تمام</button>', { narrow: true, tag: 'admin' });
+  m.q('[data-ok]').onclick = m.close;
+  return m;
 }
 
 /* =====================================================================
@@ -100,7 +106,7 @@ function BusEditor(host, init) {
     host.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === S.tool));
   }
   function full() { grid.innerHTML = busHTML({ cells: strs(), nums: nums(), cols: cols() }, { mode: 'edit' }); info(); }
-  function refresh() {                                   // تحديث في نفس العناصر (عشان السحب ما يتقطعش)
+  function refresh() {
     const nm = nums();
     grid.querySelectorAll('.c').forEach(el => {
       const r = +el.dataset.r, c = +el.dataset.c, t = S.cells[r][c], p = cellParts(t, nm[r][c], {});
@@ -138,14 +144,14 @@ function mSave(token, name, code) {
 }
 function mLogout(msg, tellServer) {
   if (tellServer && PM.token) api('memberLogout', { mtoken: PM.token }).catch(() => {});
-  PM.token = ''; PM.name = ''; PM.code = ''; PM.imgs = {}; PM.news = { items: [], total: 0 }; PM.trips = [];
+  PM.token = ''; PM.name = ''; PM.code = ''; PM.imgs = {}; PM.news = { items: [], total: 0 }; PM.trips = []; PM.tabs = null; PM.tab = 'news';
   ['m_tok', 'm_name', 'm_code'].forEach(k => sessionStorage.removeItem(k));
   $$('.ov[data-member]').forEach(o => o._close && o._close());
   $('#memPortal').hidden = true; $('#memLogin').hidden = false; $('#navMember').textContent = 'دخول الأعضاء';
   if (msg) showErr('#memErr', msg);
 }
 function portalOnTab(tab) { if (tab === 'member' && PM.token && PM.tab === 'news' && !PM.news.items.length && !$('#memNews').dataset.loaded) loadNews(true); }
-function portalAdminReset() { PA.news = []; PA.trips = []; }
+function portalAdminReset() { PA.news = []; PA.trips = []; PA.audit = { items: [], hasMore: false }; const a = $('#admAudit'); if (a) { a.dataset.init = ''; a.innerHTML = ''; } }
 
 function portalInit() {
   $('#memCode').addEventListener('input', e => { e.target.value = toEn(e.target.value).replace(/\D/g, '').slice(0, 7); });
@@ -159,30 +165,46 @@ function portalInit() {
     const r = await api('memberLogin', { code, password: pw });
     b.disabled = false; b.textContent = 'دخول';
     if (!r.ok) return showErr('#memErr', r.error);
-    mSave(r.token, r.name, r.code); PM.mustChange = !!r.mustChange; $('#memPass').value = ''; enterPortal();
+    mSave(r.token, r.name, r.code); PM.mustChange = !!r.mustChange; PM.tabs = r.tabs || null; $('#memPass').value = ''; enterPortal();
   };
   $('#memLogout').onclick = () => mLogout('', true);
   $('#memGoAcct').onclick = e => { e.preventDefault(); showMemberTab('acct'); };
   $$('#memTabs button').forEach(b => b.onclick = () => showMemberTab(b.dataset.mt));
   $('#memTrips').onclick = onTripsClick;
   $('#memNews').onclick = e => { if (e.target.closest('[data-more]')) loadNews(false); };
-  if (PM.token) {
-    enterPortal();
-    mcall('memberMe').then(r => { if (r.ok) { PM.mustChange = r.mustChange; PM.name = r.name; PM.code = r.code; paintWho(); } });
-  }
+  if (PM.token) { enterPortal(); refreshMemberTabs(); }
 }
 function paintWho() {
   $('#memName').textContent = PM.name; $('#memCodeShow').textContent = PM.code;
   $('#memPwWarn').hidden = !PM.mustChange; $('#navMember').textContent = 'منطقتي';
 }
-function enterPortal() {
-  $('#memLogin').hidden = true; $('#memPortal').hidden = false; paintWho(); showMemberTab(PM.mustChange ? 'news' : PM.tab);
+// الرحلات والمؤتمرات بتظهر بس لو فيه حاجة منهم (مفتوحة أو مقفولة). لو التاب الحالي اختفى بنرجع للأخبار.
+function applyMemberTabs(t) {
+  if (t) PM.tabs = t;
+  const x = PM.tabs || {};
+  $('#mtTrips').hidden = !(x.trips > 0);
+  $('#mtConf').hidden = !(x.conf > 0 && window.confModule);
+  const cur = $(`#memTabs [data-mt="${PM.tab}"]`);
+  if (cur && cur.hidden) showMemberTab('news');
 }
+async function refreshMemberTabs() {
+  const r = await mcall('memberMe');
+  if (r.ok) { PM.mustChange = r.mustChange; PM.name = r.name; PM.code = r.code; paintWho(); applyMemberTabs(r.tabs); }
+}
+function enterPortal() {
+  $('#memLogin').hidden = true; $('#memPortal').hidden = false; paintWho(); applyMemberTabs(PM.tabs);
+  const want = PM.mustChange ? 'news' : PM.tab, btn = $(`#memTabs [data-mt="${want}"]`);
+  showMemberTab(btn && !btn.hidden ? want : 'news');
+}
+const MEM_BOX = { news: '#memNews', trips: '#memTrips', conf: '#memConf', acct: '#memAcct' };
 function showMemberTab(name) {
   PM.tab = name;
   $$('#memTabs button').forEach(b => b.classList.toggle('on', b.dataset.mt === name));
-  $('#memNews').hidden = name !== 'news'; $('#memTrips').hidden = name !== 'trips'; $('#memAcct').hidden = name !== 'acct';
-  if (name === 'news') loadNews(true); else if (name === 'trips') loadTrips(); else renderAccount();
+  Object.keys(MEM_BOX).forEach(k => { const e = $(MEM_BOX[k]); if (e) e.hidden = k !== name; });
+  if (name === 'news') { loadNews(true); refreshMemberTabs(); }
+  else if (name === 'trips') loadTrips();
+  else if (name === 'conf') { if (window.confModule) window.confModule.loadMember(); }
+  else { renderAccount(); refreshMemberTabs(); }
 }
 
 /* ---------- الأخبار ---------- */
@@ -223,7 +245,9 @@ async function loadTrips() {
   const box = $('#memTrips'); box.innerHTML = pSpin;
   const r = await mcall('tripsList');
   if (!r.ok) { box.innerHTML = `<div class="formerr">${esc(r.error)}</div>`; return; }
-  PM.trips = r.items; renderTrips();
+  PM.trips = r.items;
+  if (!r.items.length) { applyMemberTabs({ ...(PM.tabs || {}), trips: 0 }); return; }    // اتحذفت/اتخفت: التاب يختفي
+  renderTrips();
 }
 function tripStateHTML(t) {
   const my = t.my || { status: 'none' }, open = t.status === 'open';
@@ -371,8 +395,8 @@ document.addEventListener('click', async e => {
   if (!n) return;
   if (act === 'edit') return openNewsEditor(n);
   if (act === 'del') {
-    if (!await ask({ title: 'حذف الخبر', msg: `حذف «${n.title}» وصوره نهائيًا؟`, okText: 'حذف' })) return;
-    const r = await adm('newsDelete', { id: n.id }); if (r.ok) { PA.news = r.items; renderNewsAdmin(); toast('تم الحذف', 'ok'); } else toast(r.error, 'err');
+    if (!await ask({ title: 'حذف الخبر', msg: `حذف «${n.title}»؟ هيتنقل لسلة المحذوفات (وصوره بتفضل محفوظة).`, okText: 'حذف' })) return;
+    const r = await adm('newsDelete', { id: n.id }); if (r.ok) { PA.news = r.items; renderNewsAdmin(); toast('تم الحذف (في سلة المحذوفات)', 'ok'); refreshTrashCount(); } else toast(r.error, 'err');
   } else {
     const r = await adm('newsSave', { id: n.id, title: n.title, body: n.body, pinned: act === 'pin' ? !n.pinned : n.pinned, published: act === 'pub' ? !n.published : n.published, keep: Array.from({ length: n.imgCount }, (_, i) => i) });
     if (r.ok) { PA.news = r.items; renderNewsAdmin(); } else toast(r.error, 'err');
@@ -528,7 +552,7 @@ async function openTripAdmin(id) {
     }
     const x = e.target.closest('[data-t2]'); if (!x) return;
     if (x.dataset.t2 === 'edit') return openTripEditor(id, () => { load(); loadTripsAdmin(); });
-    if (x.dataset.t2 === 'del') { if (!await ask({ title: 'حذف الرحلة', msg: 'حذف الرحلة وكل الحجوزات نهائيًا؟', okText: 'حذف' })) return; const r = await adm('tripDelete', { id }); if (r.ok) { m.close(); loadTripsAdmin(); toast('تم الحذف', 'ok'); } else toast(r.error, 'err'); return; }
+    if (x.dataset.t2 === 'del') { if (!await ask({ title: 'حذف الرحلة', msg: 'حذف الرحلة وحجوزاتها؟ هتتنقل لسلة المحذوفات.', okText: 'حذف' })) return; const r = await adm('tripDelete', { id }); if (r.ok) { m.close(); loadTripsAdmin(); toast('تم الحذف (في سلة المحذوفات)', 'ok'); refreshTrashCount(); } else toast(r.error, 'err'); return; }
     if (x.dataset.t2 === 'add') { const code = toEn(m.q('[data-addcode]').value).replace(/\D/g, ''); if (code.length !== 7) return toast('الكود 7 أرقام', 'err'); return act('tripAddMember', { tripId: id, code }, 'تمت الإضافة — ابعت له الكود'); }
     if (x.dataset.t2 === 'xls') {
       if (!window.XLSX) return toast('مكتبة Excel لم تُحمّل', 'err');
@@ -539,3 +563,106 @@ async function openTripAdmin(id) {
   load();
 }
 
+/* =====================================================================
+   سجل التدقيق (سوبر أدمن): مين عمل إيه ومتى وقيمة قبل/بعد
+   ===================================================================== */
+const AUD_ACT = {
+  'registration.register': 'تسجيل جديد', 'registration.resubmit': 'إعادة تقديم', 'registration.update': 'تعديل بيانات تسجيل', 'registration.accept': 'قبول تسجيل',
+  'registration.reject': 'رفض تسجيل', 'registration.delete': 'حذف تسجيل', 'admin.login': 'دخول أدمن', 'admin.create': 'إضافة أدمن', 'admin.delete': 'حذف أدمن',
+  'admin.password.change': 'تغيير باسورد أدمن (ذاتي)', 'admin.password.reset': 'تغيير باسورد أدمن (بواسطة السوبر)', 'admin.super.set': 'تعيين سوبر أدمن',
+  'member.password.change': 'تغيير باسورد عضو', 'member.password.reset': 'إرجاع باسورد عضو للواتساب', 'setting.registration': 'فتح/غلق التسجيل',
+  'news.create': 'خبر جديد', 'news.update': 'تعديل خبر', 'news.delete': 'حذف خبر',
+  'trip.create': 'رحلة جديدة', 'trip.update': 'تعديل رحلة', 'trip.delete': 'حذف رحلة', 'trip.join': 'طلب اشتراك في رحلة', 'trip.cancel': 'إلغاء اشتراك رحلة',
+  'trip.verify': 'دخول بكود رحلة', 'trip.seat.select': 'اختيار مقعد رحلة', 'trip.seat.release': 'إلغاء مقعد رحلة', 'trip.seat.assign': 'تعيين مقعد رحلة (أدمن)',
+  'trip.decide.accept': 'قبول اشتراك رحلة', 'trip.decide.reject': 'رفض اشتراك رحلة', 'trip.decide.cancel': 'إلغاء اشتراك رحلة (أدمن)', 'trip.add': 'إضافة عضو لرحلة',
+  'conf.create': 'مؤتمر جديد', 'conf.update': 'تعديل مؤتمر', 'conf.delete': 'حذف مؤتمر', 'conf.join': 'طلب اشتراك في مؤتمر', 'conf.cancel': 'إلغاء اشتراك مؤتمر',
+  'conf.verify': 'دخول بكود مؤتمر', 'conf.seat.select': 'اختيار مقعد مؤتمر', 'conf.seat.release': 'إلغاء مقعد مؤتمر', 'conf.seat.assign': 'تعيين مقعد مؤتمر (أدمن)',
+  'conf.bed.select': 'اختيار سرير', 'conf.bed.release': 'إلغاء سرير', 'conf.bed.assign': 'تسكين (أدمن)', 'conf.decide.accept': 'قبول اشتراك مؤتمر',
+  'conf.decide.reject': 'رفض اشتراك مؤتمر', 'conf.decide.cancel': 'إلغاء اشتراك مؤتمر (أدمن)', 'conf.add': 'إضافة عضو لمؤتمر',
+  'trash.restore': 'استرجاع من سلة المحذوفات', 'system.migrate': 'ترحيل (من المحرر)'
+};
+const AUD_ENT = { registration: 'التسجيلات', member: 'الأعضاء (باسورد)', news: 'الأخبار', trip: 'الرحلات', tripBooking: 'حجوزات الرحلات', conference: 'المؤتمرات', confBooking: 'حجوزات المؤتمرات', admin: 'الأدمنز', setting: 'الإعدادات', system: 'النظام', memberAuth: 'باسورد عضو' };
+const AUD_TYPE = { super: ['سوبر أدمن', 's'], admin: ['أدمن', 'p'], member: ['عضو', 'o'], public: ['زائر', 'g'], system: ['النظام', 'b'] };
+const AUD_FIELD_BASE = {
+  title: 'العنوان', body: 'النص', pinned: 'مثبّت', published: 'منشور', images: 'الصور', tripDate: 'التاريخ', tripTime: 'الوقت', place: 'المكان', price: 'السعر', description: 'التفاصيل',
+  status: 'الحالة', useCode: 'الدخول بكود', useBus: 'أتوبيس', verified: 'دخل بالكود', seat: 'المقعد', bed: 'السرير', destination: 'الوجهة', dateFrom: 'من', dateTo: 'إلى', days: 'الأيام',
+  nights: 'الليالي', rooms: 'الغرف', layout: 'الخريطة', open: 'التسجيل مفتوح', details: 'التفاصيل', profilePhoto: 'الصورة الشخصية', idPhoto: 'صورة البطاقة'
+};
+let AUD_FIELD_ALL = null;                      // بيتبني وقت الاستخدام (EXPORT_COLS بيتعرّف في السكريبت الرئيسي اللي بيتحمّل بعد الملف ده)
+function audField(k) {
+  if (!AUD_FIELD_ALL) AUD_FIELD_ALL = Object.assign({}, Object.fromEntries(typeof EXPORT_COLS !== 'undefined' ? EXPORT_COLS : []), AUD_FIELD_BASE);
+  return AUD_FIELD_ALL[k] || k;
+}
+function audLabel(a) { return AUD_ACT[a] || (a.indexOf('unaudited.') === 0 ? '⚠ تعديل من غير تفاصيل' : a); }
+function audChanges(ch) {
+  if (!ch) return '';
+  return '<div class="chg">' + Object.keys(ch).map(k => { const o = ch[k][0], n = ch[k][1];
+    return `<div><b>${esc(audField(k))}</b>: ${o !== '' ? `<s>${esc(o)}</s> ← ` : ''}<ins>${esc(n === '' ? '(فاضي)' : n)}</ins></div>`; }).join('') + '</div>';
+}
+function audCard(x) {
+  const ty = AUD_TYPE[x.actorType] || [x.actorType, 'g'], danger = /delete|reject|unaudited/.test(x.action);
+  return `<div class="aud${danger ? ' danger' : ''}" data-act="${esc(x.action)}"><div class="top"><span class="ltr">${esc(x.at)}</span><span class="badge ${ty[1]}">${ty[0]}</span><b>${esc(x.actorName || x.actor || '—')}</b>${x.actor && x.actor !== x.actorName ? `<span class="ltr">(${esc(x.actor)})</span>` : ''}</div>
+    <h5>${esc(audLabel(x.action))}${x.label ? ' · <span style="font-weight:600">' + esc(x.label) + '</span>' : ''}</h5>${x.note ? `<div class="hint">${esc(x.note)}</div>` : ''}${audChanges(x.changes)}</div>`;
+}
+function audFilters() {
+  return { q: $('#audQ').value.trim(), entity: $('#audEnt').value, actorType: $('#audType').value, from: $('#audFrom').value, to: $('#audTo').value };
+}
+async function loadAuditAdmin(more) {
+  const box = $('#admAudit');
+  if (!box.dataset.init) {
+    box.dataset.init = '1';
+    box.innerHTML = `<div class="notice info">كل تعديل في الموقع بيتسجّل هنا باسم اللي عمله (أدمن / عضو / زائر / النظام) وقيمة قبل وبعد. السجل ده للسوبر أدمن بس.</div>
+      <div class="flt"><input id="audQ" placeholder="بحث: اسم / كود / عنوان / رقم قومي"><select id="audEnt"><option value="">كل الأقسام</option>${Object.keys(AUD_ENT).map(k => `<option value="${k}">${AUD_ENT[k]}</option>`).join('')}</select>
+      <select id="audType"><option value="">كل الفاعلين</option>${Object.keys(AUD_TYPE).map(k => `<option value="${k}">${AUD_TYPE[k][0]}</option>`).join('')}</select>
+      <input id="audFrom" type="date" dir="ltr" title="من تاريخ"><input id="audTo" type="date" dir="ltr" title="إلى تاريخ"><button class="btn pri" id="audGo">🔍 بحث</button><button class="btn" id="audXls">⬇ Excel</button></div>
+      <div id="audList"></div><div id="audMore" style="text-align:center"></div>`;
+    $('#audGo').onclick = () => loadAuditAdmin(false);
+    $('#audQ').addEventListener('keydown', e => { if (e.key === 'Enter') loadAuditAdmin(false); });
+    ['audEnt', 'audType', 'audFrom', 'audTo'].forEach(id => $('#' + id).onchange = () => loadAuditAdmin(false));
+    $('#audMore').onclick = e => { if (e.target.closest('[data-more]')) loadAuditAdmin(true); };
+    $('#audXls').onclick = () => {
+      if (!window.XLSX) return toast('مكتبة Excel لم تُحمّل', 'err');
+      const aoa = [['الوقت', 'الفاعل', 'نوعه', 'العملية', 'القسم', 'العنصر', 'التفاصيل', 'ملاحظة']].concat(PA.audit.items.map(x => [x.at, (x.actorName || '') + (x.actor ? ' (' + x.actor + ')' : ''), (AUD_TYPE[x.actorType] || [x.actorType])[0], audLabel(x.action), AUD_ENT[x.entity] || x.entity, x.label,
+        x.changes ? Object.keys(x.changes).map(k => audField(k) + ': ' + x.changes[k][0] + ' ← ' + x.changes[k][1]).join(' | ') : '', x.note]));
+      const wb = XLSX.utils.book_new(); wb.Workbook = { Views: [{ RTL: true }] }; XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'سجل التدقيق'); XLSX.writeFile(wb, 'audit_log.xlsx');
+    };
+  }
+  const list = $('#audList'), my = PA.auditSeq = (PA.auditSeq || 0) + 1;           // رقم الطلب: الرد القديم (فلتر اتغيّر بعده) بيتجاهل
+  if (!more) { PA.audit = { items: [], hasMore: false }; list.innerHTML = pSpin; }
+  const r = await adm('auditList', { ...audFilters(), offset: PA.audit.items.length, limit: 50 }, 60000);
+  if (my !== PA.auditSeq) return;
+  if (!r.ok) { list.innerHTML = `<div class="formerr">${esc(r.error)}</div>`; return; }
+  PA.audit.items = PA.audit.items.concat(r.items); PA.audit.hasMore = r.hasMore;
+  list.innerHTML = PA.audit.items.length ? PA.audit.items.map(audCard).join('') : '<div class="empty">مفيش عمليات مطابقة.</div>';
+  $('#audMore').innerHTML = r.hasMore ? '<button class="btn" data-more>عرض المزيد</button>' : '';
+}
+
+/* =====================================================================
+   سلة المحذوفات (سوبر أدمن): استرجاع بقيود (من غير تكرار) مع تنبيهات
+   ===================================================================== */
+const TRASH_KIND = { registration: ['👤', 'تسجيل'], news: ['📰', 'خبر'], trip: ['🚌', 'رحلة'], conference: ['🏨', 'مؤتمر'], admin: ['🔑', 'حساب أدمن'], memberAuth: ['🔒', 'باسورد عضو'], tripBooking: ['🎫', 'حجز رحلة'], confBooking: ['🎫', 'حجز مؤتمر'] };
+const TRASH_CHILD = { memberAuth: 'باسورد', tripBooking: 'حجز رحلة', confBooking: 'حجز مؤتمر' };
+async function loadTrashAdmin() {
+  const box = $('#admTrash'); box.innerHTML = pSpin;
+  const r = await adm('trashList', { status: PA.trashView }, 60000);
+  if (!r.ok) { box.innerHTML = `<div class="formerr">${esc(r.error)}</div>`; return; }
+  setTrashCount(r.count);
+  const view = PA.trashView;
+  box.innerHTML = `<div class="notice info">أي حاجة بتتمسح بتنتقل هنا ومبتتمسحش نهائيًا. الاسترجاع بيرفض لو هيعمل تكرار (رقم قومي أو كود أو اسم+تاريخ أو يوزر)، وبيعرض تنبيهات لو اضطر يتخطى حاجة.</div>
+    <div class="subtabs"><button data-tv="deleted" class="${view === 'deleted' ? 'on' : ''}">🗑 المحذوفات (${r.count})</button><button data-tv="restored" class="${view === 'restored' ? 'on' : ''}">♻️ اللي اترجّعت</button></div>
+    <div id="trList">${r.items.length ? r.items.map(x => { const k = TRASH_KIND[x.kind] || ['📦', x.kind];
+      const kids = Object.keys(x.children).map(c => `${x.children[c]} ${TRASH_CHILD[c] || c}`).join(' + ');
+      return `<div class="aud" data-id="${esc(x.id)}"><div class="top"><span class="ltr">${esc(x.deletedAt)}</span><span class="badge n">${k[0]} ${k[1]}</span><span>حذفه: <b>${esc(x.deletedByName || x.deletedBy)}</b></span>${x.restoredAt ? `<span class="badge o">رجّعه ${esc(x.restoredBy)} · ${esc(x.restoredAt)}</span>` : ''}</div>
+        <h5>${esc(x.label)}</h5>${kids ? `<div class="hint">معاه: ${esc(kids)}</div>` : ''}${view === 'deleted' ? '<div class="acts" style="margin-top:6px"><button class="btn sm ok" data-restore>♻️ استرجاع</button></div>' : ''}</div>`; }).join('')
+      : `<div class="empty">${view === 'deleted' ? 'سلة المحذوفات فاضية 👍' : 'مفيش حاجة اترجّعت لسه.'}</div>`}</div>`;
+  $$('[data-tv]', box).forEach(b => b.onclick = () => { PA.trashView = b.dataset.tv; loadTrashAdmin(); });
+  $$('[data-restore]', box).forEach(b => b.onclick = () => doRestore(b.closest('.aud').dataset.id, b.closest('.aud').querySelector('h5').textContent));
+}
+async function doRestore(id, label) {
+  if (!await ask({ title: 'استرجاع', msg: `استرجاع «${label}» مع توابعه (لو فيه)؟ الاسترجاع بيرفض لو هيعمل تكرار.`, okText: 'استرجاع' })) return;
+  const r = await adm('trashRestore', { id }, 120000);
+  if (!r.ok) { pInfo('مينفعش يتسترجع', [r.error], 'bad'); return; }
+  if (r.count !== undefined) setTrashCount(r.count);
+  if (r.warnings && r.warnings.length) pInfo('اتسترجع «' + r.label + '» مع تنبيهات', r.warnings, 'warn'); else toast('تم استرجاع «' + r.label + '» ✔', 'ok');
+  loadTrashAdmin();
+}
