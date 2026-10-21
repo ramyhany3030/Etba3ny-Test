@@ -62,7 +62,7 @@ small.hint.bad{color:var(--bad)} small.hint.good{color:var(--ok)}
 .photo .btns{display:flex;flex-direction:column;gap:6px}
 .photo-title{font-weight:700;margin:6px 0 4px}
 .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12.5px;font-weight:700}
-.badge.p{background:#fff1d6;color:var(--warn)}.badge.o{background:#dff3e7;color:var(--ok)}.badge.n{background:#fbe1de;color:var(--bad)}.badge.s{background:#ede9fe;color:#5b21b6}.badge.g{background:#e5e7eb;color:#4b5563}
+.badge.p{background:#fff1d6;color:var(--warn)}.badge.o{background:#dff3e7;color:var(--ok)}.badge.n{background:#fbe1de;color:var(--bad)}.badge.s{background:#ede9fe;color:#5b21b6}.badge.g{background:#e5e7eb;color:#4b5563}.badge.b{background:#dbeafe;color:#1e40af}
 .code{font-size:34px;font-weight:700;letter-spacing:6px;color:var(--navy);direction:ltr;text-align:center;background:#f5f8fd;border:2px dashed var(--gold);border-radius:12px;padding:8px;margin:10px 0}
 .card-title{text-align:center;font-weight:700;color:var(--navy);margin:16px 0 4px}
 img.idcard{display:block;width:100%;max-width:560px;margin:8px auto 12px;border-radius:14px;box-shadow:0 6px 22px rgba(31,58,95,.28);-webkit-touch-callout:default}
@@ -100,9 +100,9 @@ canvas#cropCanvas{width:100%;max-width:320px;aspect-ratio:1;touch-action:none;bo
 @keyframes sp{to{transform:rotate(360deg)}}
 .lead{color:var(--mut);margin:0 0 12px}
 .empty{text-align:center;color:var(--mut);padding:26px 10px}
-/* ===== تبويبات فرعية ===== */
-.subtabs{display:flex;gap:6px;margin:12px 0;overflow-x:auto;padding-bottom:2px}
-.subtabs button{flex:1;min-width:max-content;border:1.5px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;padding:7px 14px;font:inherit;font-weight:700;cursor:pointer;font-size:14px}
+/* ===== تبويبات فرعية: من غير slider، لو مفيش مكان بتنزل سطر تاني ===== */
+.subtabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.subtabs button{flex:1 1 auto;border:1.5px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;padding:7px 12px;font:inherit;font-weight:700;cursor:pointer;font-size:14px;white-space:nowrap}
 .subtabs button.on{background:var(--navy);border-color:var(--navy);color:#fff}
 .who{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#f5f8fd;border:1px solid var(--line);border-radius:12px;padding:8px 12px}
 /* ===== أخبار ===== */
@@ -147,6 +147,18 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 .tools{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .tools button{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:5px 10px;font:inherit;font-size:13px;cursor:pointer}
 .tools button.on{border-color:var(--navy);background:#e0e9f7;font-weight:700}
+/* ===== سجل التدقيق والمحذوفات (سوبر أدمن) ===== */
+.flt{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.flt input,.flt select{padding:8px 10px}
+.aud{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:#fff}
+.aud.danger{border-color:#f5c6c1;background:#fff8f7}
+.aud .top{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--mut)}
+.aud h5{margin:4px 0;font-size:15px;color:var(--navy)}
+.aud .chg{margin-top:6px;font-size:13px;border-top:1px dashed var(--line);padding-top:6px}
+.aud .chg div{margin:2px 0;word-break:break-word}
+.aud .chg s{color:var(--bad)}
+.aud .chg ins{color:var(--ok);text-decoration:none;font-weight:600}
+.msgs div{margin:6px 0}
 /* ===== نوافذ ديناميكية ===== */
 .ov{position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:65;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:14px}
 .mb{background:#fff;border-radius:14px;max-width:820px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
@@ -236,9 +248,16 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
   <div id="memPortal" hidden>
     <div class="who"><div>أهلًا <b id="memName"></b> · الكود <b class="ltr" id="memCodeShow" style="display:inline-block"></b></div><button class="btn sm bad" id="memLogout">خروج</button></div>
     <div class="notice warn" id="memPwWarn" style="margin-top:10px" hidden>كلمة مرورك الحالية هي رقم الواتساب. يفضّل تغييرها من <a href="#" id="memGoAcct">حسابي</a>.</div>
-    <div class="subtabs" id="memTabs"><button class="on" data-mt="news">📰 الأخبار</button><button data-mt="trips">🚌 الرحلات</button><button data-mt="acct">👤 حسابي</button></div>
+    <!-- الترتيب: الأخبار، الرحلات، المؤتمرات، حسابي. الرحلات والمؤتمرات مخفية لحد ما الخادم يقول إن فيه حاجة منهم -->
+    <div class="subtabs" id="memTabs">
+      <button class="on" data-mt="news">📰 الأخبار</button>
+      <button data-mt="trips" id="mtTrips" hidden>🚌 الرحلات</button>
+      <button data-mt="conf" id="mtConf" hidden>🏨 المؤتمرات</button>
+      <button data-mt="acct">👤 حسابي</button>
+    </div>
     <div id="memNews"></div>
     <div id="memTrips" hidden></div>
+    <div id="memConf" hidden></div>
     <div id="memAcct" hidden></div>
   </div>
 </section>
@@ -265,7 +284,15 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
         <button class="btn sm bad" id="admLogout">خروج</button>
       </div>
     </div>
-    <div class="subtabs" id="admTabs"><button class="on" data-at="regs">📋 التسجيلات</button><button data-at="news">📰 الأخبار</button><button data-at="trips">🚌 الرحلات</button></div>
+    <div class="subtabs" id="admTabs">
+      <button class="on" data-at="regs">📋 التسجيلات</button>
+      <button data-at="news" id="admTabNews">📰 الأخبار</button>
+      <button data-at="trips" id="admTabTrips">🚌 الرحلات</button>
+      <button data-at="conf" id="admTabConf" hidden>🏨 المؤتمرات</button>
+      <button data-at="audit" id="admTabAudit" hidden>🔍 سجل التدقيق</button>
+      <button data-at="trash" id="admTabTrash" hidden>🗑 المحذوفات <span class="badge n" id="trashBadge" hidden>0</span></button>
+    </div>
+    <div class="notice warn" id="trashNotice" hidden>🗑 فيه <b id="trashN">0</b> عنصر محذوف يمكن استرجاعه. <a href="#" id="trashGo">افتح سلة المحذوفات</a></div>
     <div id="admRegs">
       <div class="stats">
         <div class="stat"><b id="sTotal">0</b><span>إجمالي المسجلين</span></div>
@@ -287,6 +314,9 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
     </div>
     <div id="admNews" hidden></div>
     <div id="admTrips" hidden></div>
+    <div id="admConf" hidden></div>
+    <div id="admAudit" hidden></div>
+    <div id="admTrash" hidden></div>
   </div>
 </section>
 </main>
@@ -451,7 +481,7 @@ input.tcode{text-transform:uppercase;letter-spacing:4px;text-align:center;font-w
 // رابط الـ Web App يُقرأ من ملف config.js (لا تعدّل هنا)
 const API_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || '';
 // لازم يطابق APP_VERSION في Code.gs. لو مختلف يظهر تنبيه "الخادم قديم" فوق الصفحة.
-const EXPECTED_VERSION = '2026-10-21-portal-v5';
+const EXPECTED_VERSION = '2026-10-22-audit-v6';
 
 const LISTS = {
   stages: {
@@ -1041,7 +1071,7 @@ $('#resubBtn').onclick = async () => {
    ========================================================= */
 const A = {
   token: sessionStorage.getItem('adm_tok') || '', user: sessionStorage.getItem('adm_user') || '', role: sessionStorage.getItem('adm_role') || 'admin',
-  rows: [], view: [], open: true, cur: null, img: {}, pend: {}, tab: 'regs'
+  rows: [], view: [], open: true, cur: null, img: {}, pend: {}, tab: 'regs', trash: 0
 };
 const isSuper = () => A.role === 'super';
 
@@ -1055,13 +1085,14 @@ function saveSession(token, user, role) {
   sessionStorage.setItem('adm_tok', A.token); sessionStorage.setItem('adm_user', A.user); sessionStorage.setItem('adm_role', A.role);
 }
 function logout(msg) {
-  A.token = ''; A.user = ''; A.role = 'admin';
+  A.token = ''; A.user = ''; A.role = 'admin'; A.trash = 0;
   ['adm_tok', 'adm_user', 'adm_role'].forEach(k => sessionStorage.removeItem(k));
   $('#admDash').hidden = true; $('#admLogin').hidden = false;
   ['detailModal', 'acctModal', 'adminsModal', 'askModal'].forEach(id => $('#' + id).hidden = true);
   $$('.ov[data-admin]').forEach(o => { if (o._close) o._close(); else o.remove(); });
   A.rows = []; A.img = {}; A.pend = {};
   if (typeof portalAdminReset === 'function') portalAdminReset();
+  updateTrashNotice();
   if (msg) showErr('#admErr', msg);
 }
 
@@ -1078,21 +1109,53 @@ $('#admBtn').onclick = async () => {
   $('#admPass').value = ''; enterDash();
 };
 $('#admLogout').onclick = () => logout();
-$('#admRefresh').onclick = () => { if (A.tab === 'news' && typeof loadNewsAdmin === 'function') loadNewsAdmin(); else if (A.tab === 'trips' && typeof loadTripsAdmin === 'function') loadTripsAdmin(); else loadList(); };
 
-function applyRole() { $('#admName').textContent = A.user; $('#admRole').hidden = !isSuper(); $('#admAdmins').hidden = !isSuper(); }
+/* ---------- التابات: من غير slider (بتنزل سطر تاني لو مفيش مكان). سجل التدقيق والمحذوفات للسوبر أدمن بس ---------- */
+const ADM_BOX = { regs: '#admRegs', news: '#admNews', trips: '#admTrips', conf: '#admConf', audit: '#admAudit', trash: '#admTrash' };
+function admLoader(name) {
+  return {
+    regs: () => loadList(),
+    news: typeof loadNewsAdmin === 'function' ? loadNewsAdmin : null,
+    trips: typeof loadTripsAdmin === 'function' ? loadTripsAdmin : null,
+    conf: window.confModule ? window.confModule.loadAdmin : null,
+    audit: typeof loadAuditAdmin === 'function' ? loadAuditAdmin : null,
+    trash: typeof loadTrashAdmin === 'function' ? loadTrashAdmin : null
+  }[name];
+}
+function applyRole() {
+  $('#admName').textContent = A.user; $('#admRole').hidden = !isSuper(); $('#admAdmins').hidden = !isSuper();
+  $('#admTabAudit').hidden = !(isSuper() && typeof loadAuditAdmin === 'function');
+  $('#admTabTrash').hidden = !(isSuper() && typeof loadTrashAdmin === 'function');
+  $('#admTabNews').hidden = typeof loadNewsAdmin !== 'function';
+  $('#admTabTrips').hidden = typeof loadTripsAdmin !== 'function';
+  $('#admTabConf').hidden = !window.confModule;
+}
 function enterDash() { $('#admLogin').hidden = true; $('#admDash').hidden = false; applyRole(); showAdminTab('regs'); }
-
-// تبويبات لوحة الأدمن: التسجيلات / الأخبار / الرحلات
 function showAdminTab(name) {
+  if ((name === 'audit' || name === 'trash') && !isSuper()) name = 'regs';
+  if (name === 'trash' && A.tab !== 'trash' && typeof PA !== 'undefined') PA.trashView = 'deleted';   // سلة المحذوفات بتفتح دايمًا على «المحذوفات»
   A.tab = name;
   $$('#admTabs button').forEach(b => b.classList.toggle('on', b.dataset.at === name));
-  $('#admRegs').hidden = name !== 'regs'; $('#admNews').hidden = name !== 'news'; $('#admTrips').hidden = name !== 'trips';
-  if (name === 'regs') loadList();
-  else if (name === 'news' && typeof loadNewsAdmin === 'function') loadNewsAdmin();
-  else if (name === 'trips' && typeof loadTripsAdmin === 'function') loadTripsAdmin();
+  Object.keys(ADM_BOX).forEach(k => { const e = $(ADM_BOX[k]); if (e) e.hidden = k !== name; });
+  const f = admLoader(name); if (f) f();
+  updateTrashNotice();
 }
 $$('#admTabs button').forEach(b => b.onclick = () => showAdminTab(b.dataset.at));
+$('#admRefresh').onclick = () => { const f = admLoader(A.tab); if (f) f(); };
+
+/* ---------- تنبيه المحذوفات (سوبر أدمن) ---------- */
+function setTrashCount(n) { A.trash = n || 0; updateTrashNotice(); }
+function updateTrashNotice() {
+  const n = A.trash || 0, show = isSuper() && n > 0;
+  $('#trashBadge').hidden = !show; $('#trashBadge').textContent = n;
+  $('#trashNotice').hidden = !(show && A.tab !== 'trash'); $('#trashN').textContent = n;
+}
+$('#trashGo').onclick = e => { e.preventDefault(); showAdminTab('trash'); };
+async function refreshTrashCount() {
+  if (!isSuper() || !A.token) return;
+  const r = await adm('trashList', {}, 30000);
+  if (r.ok) setTrashCount(r.count);
+}
 
 async function loadList() {
   $('#admBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px"><span class="spin"></span> جاري التحميل...</td></tr>';
@@ -1100,6 +1163,7 @@ async function loadList() {
   if (!r.ok) { $('#admBody').innerHTML = ''; return toast(r.error, 'err'); }
   A.rows = r.rows; setToggle(r.open);
   if (r.role && r.role !== A.role) { A.role = r.role; sessionStorage.setItem('adm_role', A.role); applyRole(); }
+  if (r.trashCount !== undefined) setTrashCount(r.trashCount);
   renderList();
 }
 function setToggle(open) { A.open = open; $('#admToggle').textContent = open ? '🟢 التسجيل مفتوح (اضغط للإغلاق)' : '🔴 التسجيل مغلق (اضغط للفتح)'; }
@@ -1170,9 +1234,14 @@ async function doReject(nid) {
 }
 async function doDelete(nid) {
   const r0 = byNid(nid); if (!r0) return;
-  if (!await ask({ title: 'حذف نهائي', msg: `سيتم حذف «${r0.fullName}» وصوره وحجوزاته نهائيًا، ويصبح الرقم القومي متاحًا للتسجيل من جديد. متأكد؟`, okText: 'حذف' })) return;
+  const hint = isSuper() ? 'هتتنقل لسلة المحذوفات وتقدر ترجّعها.' : 'هتتنقل لسلة المحذوفات (السوبر أدمن بس هو اللي يقدر يرجّعها).';
+  if (!await ask({ title: 'حذف', msg: `حذف «${r0.fullName}» وحجوزاته؟ ${hint} الرقم القومي هيبقى متاح للتسجيل من جديد.`, okText: 'حذف' })) return;
   const r = await adm('adminDelete', { nid });
-  if (r.ok) { A.rows = A.rows.filter(x => x.nid !== nid); renderList(); toast('تم الحذف', 'ok'); if (A.cur === nid) $('#detailModal').hidden = true; } else toast(r.error, 'err');
+  if (r.ok) {
+    A.rows = A.rows.filter(x => x.nid !== nid); renderList(); toast('تم الحذف (في سلة المحذوفات)', 'ok');
+    if (A.cur === nid) $('#detailModal').hidden = true;
+    if (r.trashCount !== undefined) setTrashCount(r.trashCount);
+  } else toast(r.error, 'err');
 }
 
 /* ---------------- نافذة التفاصيل (تعديل البيانات + الصور) ---------------- */
@@ -1201,6 +1270,7 @@ function refreshDetail() {
     if (!await ask({ title: 'إرجاع كلمة المرور', msg: `كلمة مرور «${r.fullName}» هترجع لرقم الواتساب (${r.whatsapp}) وأي جلسة مفتوحة له هتتقفل. متأكد؟`, okText: 'إرجاع' })) return;
     const x = await adm('adminResetMemberPassword', { nid: A.cur });
     toast(x.ok ? 'تم إرجاع كلمة المرور لرقم الواتساب' : x.error, x.ok ? 'ok' : 'err');
+    if (x.ok) refreshTrashCount();
   };
 }
 async function saveDetail() {
@@ -1347,9 +1417,9 @@ $('#admsBody').onclick = async e => {
     if (r.ok) { renderAdmins(r.admins); toast('تم تغيير كلمة مرور ' + u, 'ok'); } else toast(r.error, 'err');
   } else if (b.dataset.del) {
     const u = b.dataset.del;
-    if (!await ask({ title: 'حذف أدمن', msg: `حذف حساب «${u}»؟ هيتسجل خروجه فورًا ومش هيقدر يدخل تاني.`, okText: 'حذف' })) return;
+    if (!await ask({ title: 'حذف أدمن', msg: `حذف حساب «${u}»؟ هيتسجل خروجه فورًا ومش هيقدر يدخل تاني، والحساب بيتنقل لسلة المحذوفات.`, okText: 'حذف' })) return;
     const r = await adm('adminDeleteAdmin', { username: u }, 60000);
-    if (r.ok) { renderAdmins(r.admins); toast('تم حذف ' + u, 'ok'); } else toast(r.error, 'err');
+    if (r.ok) { renderAdmins(r.admins); toast('تم حذف ' + u, 'ok'); refreshTrashCount(); } else toast(r.error, 'err');
   }
 };
 
