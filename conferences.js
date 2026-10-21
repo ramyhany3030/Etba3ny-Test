@@ -1,13 +1,12 @@
 /* =====================================================================
    conferences.js — موديول المؤتمرات (واجهة العضو + واجهة الأدمن)
-   بيتحمّل بعد portal.js في index.html. بيضيف لوحده تبويب «🏨 المؤتمرات» للأعضاء وللأدمن،
+   بيتحمّل بعد portal.js. التابات والحاويات (#memConf / #admConf) موجودة في index.html، والملف ده بيعرّف window.confModule
    وبيستخدم الدوال الموجودة (pModal / busHTML / BusEditor / mcall / adm / ask / toast ...).
    ===================================================================== */
 (function () {
   'use strict';
   if (window.__confModule) return; window.__confModule = true;
 
-  /* ---------------- تنسيق ---------------- */
   const CSS = `
   .cf-room{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px;background:#fff}
   .cf-room.rs{background:#fafafa}
@@ -33,11 +32,10 @@
   .cf-quick{background:#f5f8fd;border:1px solid var(--line);border-radius:12px;padding:8px;margin:6px 0 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .cf-quick input,.cf-quick select{width:auto;padding:6px 8px}
   .cf-sec{margin:14px 0 4px;color:var(--navy)}
-  .badge.b{background:#dbeafe;color:#1e40af}
   @media(max-width:640px){.cf-rrow{grid-template-columns:1fr 1fr}.cf-rrow button{grid-column:2}.cf-rrow [data-r=name]{grid-column:1/-1}.cf-rrow [data-r=note]{grid-column:1/-1}}
   `;
 
-  /* ---------------- أدوات ---------------- */
+  /* ---------------- تنسيق ---------------- */
   const AR = {
     days: n => n === 1 ? 'يوم واحد' : n === 2 ? 'يومان' : n <= 10 ? n + ' أيام' : n + ' يومًا',
     nights: n => n === 0 ? 'بدون مبيت' : n === 1 ? 'ليلة واحدة' : n === 2 ? 'ليلتان' : n <= 10 ? n + ' ليالٍ' : n + ' ليلة'
@@ -62,7 +60,7 @@
     probed = !!(r && r.ok && r.conf);
     return probed;
   }
-  const staleHTML = (retry) => `<div class="notice bad">موديول المؤتمرات مش شغال على الخادم. تأكد إنك: (1) ضفت ملف <b>Conferences</b> في Apps Script، (2) عدّلت سطر <b>default</b> في doPost بملف Code.gs، (3) عملت Deploy ← Manage deployments ← ✏️ ← <b>New version</b>.</div><button class="btn" data-retry>إعادة المحاولة</button>`;
+  const staleHTML = () => `<div class="notice bad">موديول المؤتمرات مش شغال على الخادم. تأكد إنك: (1) ضفت ملف <b>Conferences</b> في Apps Script، (2) لصقت Code.gs الجديد، (3) عملت Deploy ← Manage deployments ← ✏️ ← <b>New version</b>.</div><button class="btn" data-retry>إعادة المحاولة</button>`;
   const bind = (box, fn) => { const b = box.querySelector('[data-retry]'); if (b) b.onclick = fn; };
 
   /* =====================================================================
@@ -102,7 +100,9 @@
     if (!(await probe())) { box.innerHTML = staleHTML(); bind(box, loadMember); return; }
     const r = await mcall('confList');
     if (!r.ok) { box.innerHTML = `<div class="formerr">${esc(r.error)}</div>`; return; }
-    CM.items = r.items; renderMember();
+    CM.items = r.items;
+    if (!r.items.length) { applyMemberTabs({ ...(PM.tabs || {}), conf: 0 }); return; }      // مفيش مؤتمرات: التاب يختفي
+    renderMember();
   }
   async function onMemberClick(e) {
     const btn = e.target.closest('[data-act]'); if (!btn) return;
@@ -204,24 +204,6 @@
     };
     timer = setInterval(() => { if (!document.hidden && m.el.isConnected) refresh(false); }, 15000);
     refresh(true);
-  }
-
-  function injectMember() {
-    const tabs = $('#memTabs'), portal = $('#memPortal');
-    if (!tabs || !portal || $('#memConf')) return;
-    const btn = document.createElement('button'); btn.type = 'button'; btn.dataset.mt = 'conf'; btn.id = 'memConfBtn'; btn.textContent = '🏨 المؤتمرات'; tabs.appendChild(btn);
-    const box = document.createElement('div'); box.id = 'memConf'; box.hidden = true; portal.appendChild(box);
-    const others = ['#memNews', '#memTrips', '#memAcct'];
-    const hide = () => { box.hidden = true; btn.classList.remove('on'); };
-    btn.onclick = () => {
-      $$('#memTabs button').forEach(b => b.classList.toggle('on', b === btn));
-      others.forEach(s => { const e = $(s); if (e) e.hidden = true; });
-      box.hidden = false; loadMember();
-    };
-    tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b !== btn) hide(); }, true);   // أي تبويب تاني بيقفل تبويبنا
-    others.forEach(s => { const e = $(s); if (e) new MutationObserver(() => { if (!e.hidden) hide(); }).observe(e, { attributes: true, attributeFilter: ['hidden'] }); });
-    new MutationObserver(() => { if (portal.hidden) hide(); }).observe(portal, { attributes: true, attributeFilter: ['hidden'] });   // خروج العضو
-    box.addEventListener('click', onMemberClick);
   }
 
   /* =====================================================================
@@ -403,7 +385,7 @@
       const x = ev.target.closest('[data-t2]'); if (!x) return;
       const t2 = x.dataset.t2;
       if (t2 === 'edit') return openEditor(id, () => { load(); loadAdmin(); });
-      if (t2 === 'del') { if (!await ask({ title: 'حذف المؤتمر', msg: 'حذف المؤتمر وكل الحجوزات نهائيًا؟', okText: 'حذف' })) return; const r = await adm('confDelete', { id }); if (r.ok) { m.close(); loadAdmin(); toast('تم الحذف', 'ok'); } else toast(r.error, 'err'); return; }
+      if (t2 === 'del') { if (!await ask({ title: 'حذف المؤتمر', msg: 'حذف المؤتمر وحجوزاته؟ هيتنقل لسلة المحذوفات.', okText: 'حذف' })) return; const r = await adm('confDelete', { id }); if (r.ok) { m.close(); loadAdmin(); toast('تم الحذف (في سلة المحذوفات)', 'ok'); if (typeof refreshTrashCount === 'function') refreshTrashCount(); } else toast(r.error, 'err'); return; }
       if (t2 === 'add') { const code = toEn(m.q('[data-addcode]').value).replace(/\D/g, ''); if (code.length !== 7) return toast('الكود 7 أرقام', 'err'); return act('confAddMember', { confId: id, code }, 'تمت الإضافة — ابعت له الكود'); }
       if (t2 === 'xls') {
         if (!window.XLSX) return toast('مكتبة Excel لم تُحمّل', 'err');
@@ -415,32 +397,17 @@
     load();
   }
 
-  function injectAdmin() {
-    const tabs = $('#admTabs'), dash = $('#admDash');
-    if (!tabs || !dash || $('#admConf')) return;
-    const btn = document.createElement('button'); btn.type = 'button'; btn.dataset.at = 'conf'; btn.id = 'admConfBtn'; btn.textContent = '🏨 المؤتمرات'; tabs.appendChild(btn);
-    const box = document.createElement('div'); box.id = 'admConf'; box.hidden = true; dash.appendChild(box);
-    const others = ['#admRegs', '#admNews', '#admTrips'];
-    const hide = () => { box.hidden = true; btn.classList.remove('on'); };
-    btn.onclick = () => {
-      if (typeof A !== 'undefined') A.tab = 'conf';
-      $$('#admTabs button').forEach(b => b.classList.toggle('on', b === btn));
-      others.forEach(s => { const e = $(s); if (e) e.hidden = true; });
-      box.hidden = false; loadAdmin();
-    };
-    tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b !== btn) hide(); }, true);
-    others.forEach(s => { const e = $(s); if (e) new MutationObserver(() => { if (!e.hidden) hide(); }).observe(e, { attributes: true, attributeFilter: ['hidden'] }); });
-    const rf = $('#admRefresh'); if (rf) rf.addEventListener('click', e => { if (!box.hidden) { e.stopImmediatePropagation(); loadAdmin(); } }, true);   // زر «تحديث» يحدّث المؤتمرات وإحنا فيها
-    box.addEventListener('click', ev => {
+  /* ---------- تشغيل ---------- */
+  function init() {
+    const s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s);
+    const mb = document.getElementById('memConf'); if (mb) mb.addEventListener('click', onMemberClick);
+    const ab = document.getElementById('admConf');
+    if (ab) ab.addEventListener('click', ev => {
       const b = ev.target.closest('[data-c]'); if (!b) return;
       const card = b.closest('.trip'), id = card && card.dataset.id, k = b.dataset.c;
       if (k === 'new') openEditor(null, loadAdmin); else if (k === 'edit') openEditor(id, loadAdmin); else if (k === 'open') openManage(id);
     });
   }
-
-  function init() {
-    const s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s);
-    injectMember(); injectAdmin();
-  }
+  window.confModule = { loadMember, loadAdmin };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
